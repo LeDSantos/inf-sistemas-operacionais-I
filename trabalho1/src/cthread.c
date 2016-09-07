@@ -1,30 +1,96 @@
+/*
+**
+** cthread.c
+** Biblioteca cthreads
+**
+** Instituto de Informática - UFRGS
+** Sistemas Operacionais I N 2016/2
+** Prof. Alexandre Carissimi
+**
+*/
 
-// typedef struct s_sem {
-// 	int	count;	// indica se recurso está ocupado ou não (livre > 0, ocupado = 0)
-// 	PFILA2	fila; 	// ponteiro para uma fila de threads bloqueadas no semáforo
-// } csem_t;
+#include <stdio.h>
+#include <stdlib.h>
+#include <ucontext.h>
+
+#include <cdata.h>
+#include <cthread.h>
+#include <support.h>
+
+//extern?
 
 int ccreate (void* (*start)(void*), void *arg)
 {
+	if (!has_init_cthreads)
+	{
+		init_cthreads();
+	}
 
+	// criação da thread
+	TCB_t cthread_t;
+	cthread_t.tid = ct_tid;	ct_tid++;
+	cthread_t.state = 0;
+	cthread.ticket = Random2();
+
+	getcontext(&cthread_t.context);
+
+	cthread_t.context.uc_link = &schduler;
+	cthread_t.context.uc_stack.ss_sp = malloc(CT_STACK_SIZE);
+	cthread_t.context.uc_stack.ss_size = sizeof(CT_STACK_SIZE);
+	cthread_t.context.uc_stack.ss_flags   = 0;
+
+	makecontext(&cthread_t.context, (void (*)(void)) start, 1, &arg);
+
+	//coloca thread na fila de aptos
+	AppendFila2(&filaAptos, (void *) &cthread_t)
+	cthread_t->state = 1;
+	return 0;
 }
+
 int cyield(void)
 {
+		if (!has_init_cthreads)
+	{
+		init_cthreads();
+	}
 
+	TCB_t *cthread_t;
+	getcontext(&cthread_t);
+	swapcontext(&cthread_t, schduler());
+	if(AppendFila2(&filaAptos, (void *) cthread_t))
+		return 0;
+	else
+		return -1;
 }
 int cjoin(int tid)
 {
+	if (!has_init_cthreads)
+	{
+		init_cthreads();
+	}
 
 }
 int csem_init(csem_t *sem, int count)
 {
+	if (!has_init_cthreads)
+	{
+		init_cthreads();
+	}
 
 }
 int cwait(csem_t *sem)
 {
+	if (!has_init_cthreads)
+	{
+		init_cthreads();
+	}
 
 }
 int csignal(csem_t *sem)
 {
+	if (!has_init_cthreads)
+	{
+		init_cthreads();
+	}
 
 }
