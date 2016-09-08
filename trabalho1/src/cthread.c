@@ -27,26 +27,26 @@ int ccreate (void* (*start)(void*), void *arg)
 	}
 
 	// criação da thread
-	TCB_t cthread_t;
-	cthread_t = (TCB_t *)malloc(sizeof(TCB_t));	//precisa fazer malloc?
-	cthread_t.tid = threadCount;	threadCount++;
-	cthread_t.state = PROCST_CRIACAO;
+	TCB_t c_thread;
+	c_thread = (TCB_t *)malloc(sizeof(TCB_t));	//precisa fazer malloc?
+	c_thread.tid = threadCount;	threadCount++;
+	c_thread.state = PROCST_CRIACAO;
 	cthread.ticket = Random2();
 
-	getcontext(&cthread_t.context);
+	getcontext(&c_thread.context);
 
-	cthread_t.context.uc_link = &scheduler;
-	cthread_t.context.uc_stack.ss_sp = malloc(CT_STACK_SIZE);
-	cthread_t.context.uc_stack.ss_size = sizeof(CT_STACK_SIZE);
-	cthread_t.context.uc_stack.ss_flags = 0;
+	c_thread.context.uc_link = &scheduler;
+	c_thread.context.uc_stack.ss_sp = malloc(CT_STACK_SIZE);
+	c_thread.context.uc_stack.ss_size = sizeof(CT_STACK_SIZE);
+	c_thread.context.uc_stack.ss_flags = 0;
 
-	makecontext(&cthread_t.context, (void (*)(void)) start, 1, &arg);
+	makecontext(&c_thread.context, (void (*)(void)) start, 1, &arg);
 
 	//coloca thread na fila de aptos
-	AppendFila2(&filaAptos, (void *) &cthread_t)
-	cthread_t.state = PROCST_APTO;
+	AppendFila2(&filaAptos, (void *) &c_thread);
+	c_thread.state = PROCST_APTO;
 
-	return cthread_t.tid;
+	return c_thread.tid;
 }
 
 int cyield(void)
@@ -56,10 +56,10 @@ int cyield(void)
 		init_cthreads();
 	}
 
-	TCB_t *cthread_t;
-	getcontext(&cthread_t.context);
-	AppendFila2(&filaAptos, (void *) &cthread_t);
-	swapcontext(&cthread_t.context, &scheduler);
+	TCB_t *c_thread;
+	getcontext(&c_thread.context);
+	AppendFila2(&filaAptos, (void *) &c_thread);
+	swapcontext(&c_thread.context, &scheduler);
 
 	return 0;
 }

@@ -27,9 +27,9 @@ typedef struct s_TCB {
 	ucontext_t 	context;	// contexto de execução da thread (SP, PC, GPRs e recursos)
 } TCB_t;
 
-void init_cthread();
 void schduler();
 void dispatcher(TCB_t *cthread);
+void init_cthread();
 int cidentify (char *name, int size);
 char *thread_to_string(s_tcb *cthread);
 int tamanho_fila(PFILA2 fila);

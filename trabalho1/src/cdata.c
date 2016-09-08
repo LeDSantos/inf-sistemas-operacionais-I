@@ -26,39 +26,12 @@ static bool has_init_cthreads = false;
 static ucontext_t scheduler;
 
 int threadCount = 1;
-TCB_t *main_cthread;
+TCB_t *main_thread;
 
 // estados apto, bloqueado e executando
-TCB_t *curent_cthread;
+TCB_t *running_thread;
 FILA2 filaAptos;
 FILA2 filaBloqueados;
-
-/*
-** inicialização das estruturas de dados
-*/
-void init_cthread()
-{
-		CreateFila2(&filaAptos);
-		CreateFila2(&filaBloqueados);
-
-		// inicialização do scheduler
-		getcontext(&scheduler);
-		scheduler.uc_link = 0; //scheduler volta para main
-		scheduler.uc_stack.ss_sp = malloc(CT_STACK_SIZE);
-		scheduler.uc_stack.ss_size = sizeof(CT_STACK_SIZE);
-		makecontext(&scheduler, (void (*)(void))scheduler, 0);
-
-		// criação de thread para o main
-		TCB_t main_cthread;
-		main_cthread.tid = 0; // id da main tem que ser 0
-		main_cthread.state = PROCST_EXEC;
-		main_cthread.ticket = Random2();
-		getcontext(&main_cthread.context);
-
-		curent_cthread = &main_cthread;
-
-		has_init_cthreads = TRUE;
-}
 
 /*
 ** sorteia uma thread e manda para o dispatcher
@@ -98,14 +71,41 @@ void scheduler()
 }
 
 /*
-** coloca cthread em execução
+** coloca thread em execução
 */
-void dispatcher(TCB_t *cthread)
+static void dispatcher(TCB_t *thread)
 {
-	curent_cthread = &cthread;
-	cthread->state = PROCST_EXEC;
+	running_thread = &thread;
+	thread->state = PROCST_EXEC;
 	printf("#Dispatcher#-- entrando em execução a thread: %s\n", ct_to_string(cthread));
-	setcontext(&cthread->context);
+	setcontext(&thread->context);
+}
+
+/*
+** inicialização das estruturas de dados
+*/
+static void init_cthread()
+{
+		CreateFila2(&filaAptos);
+		CreateFila2(&filaBloqueados);
+
+		// inicialização do scheduler
+		getcontext(&scheduler);
+		scheduler.uc_link = 0; //scheduler volta para main
+		scheduler.uc_stack.ss_sp = malloc(CT_STACK_SIZE);
+		scheduler.uc_stack.ss_size = sizeof(CT_STACK_SIZE);
+		makecontext(&scheduler, (void (*)(void))scheduler, 0);
+
+		// criação de thread para o main
+		TCB_t main_thread;
+		main_thread.tid = 0; // id da main tem que ser 0
+		main_thread.state = PROCST_EXEC;
+		main_thread.ticket = Random2();
+		getcontext(&main_thread.context);
+
+		running_thread = &main_thread;
+
+		has_init_cthreads = TRUE;
 }
 
 /*
