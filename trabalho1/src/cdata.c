@@ -19,7 +19,7 @@
 
 #define CT_STACK_SIZE (10*SIGSTKSZ)
 
-//indicador de inicialização das estruturas de dados
+// indicador de inicialização das estruturas de dados
 static bool has_init_cthreads = false;
 
 // toda thread deve passar controle para o scheduler ao sair de execução
@@ -33,7 +33,6 @@ TCB_t *curent_cthread;
 FILA2 filaAptos;
 FILA2 filaBloqueados;
 
-
 /*
 ** inicialização das estruturas de dados
 */
@@ -44,27 +43,27 @@ void init_cthread()
 
 		// inicialização do scheduler
 		getcontext(&scheduler);
-		scheduler.uc_link = 0; //scheduler volta para main ao terminar
+		scheduler.uc_link = 0; //scheduler volta para main
 		scheduler.uc_stack.ss_sp = malloc(CT_STACK_SIZE);
 		scheduler.uc_stack.ss_size = sizeof(CT_STACK_SIZE);
-		makecontext(&dispatcher, (void (*)(void))scheduler, 0);
+		makecontext(&scheduler, (void (*)(void))scheduler, 0);
 
 		// criação de thread para o main
 		TCB_t main_cthread;
-		main_cthread.tid = 0;
+		main_cthread.tid = 0; // id da main tem que ser 0
 		main_cthread.state = PROCST_EXEC;
 		main_cthread.ticket = Random2();
 		getcontext(&main_cthread.context);
 
 		curent_cthread = &main_cthread;
 
-		is_init_cthreads = TRUE;
+		has_init_cthreads = TRUE;
 }
 
 /*
 ** sorteia uma thread e manda para o dispatcher
 */
-void schduler()
+void scheduler()
 {
 	int draw = Random2();
 
@@ -103,7 +102,7 @@ void schduler()
 */
 void dispatcher(TCB_t *cthread)
 {
-	curent_cthread = cthread;
+	curent_cthread = &cthread;
 	cthread->state = PROCST_EXEC;
 	printf("#Dispatcher#-- entrando em execução a thread: %s\n", ct_to_string(cthread));
 	setcontext(&cthread->context);
