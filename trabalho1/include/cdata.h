@@ -20,12 +20,17 @@
 
 /* NÃO ALTERAR ESSA struct */
 typedef struct s_TCB {
-	int		tid; 		// identificador da thread
-	int		state;		// estado em que a thread se encontra
+	int 				tid;		// identificador da thread
+	int 				state;		// estado em que a thread se encontra
 // 0: Criação; 1: Apto; 2: Execução; 3: Bloqueado e 4: Término
-	int		ticket;		// 0-255: bilhete de loteria da thread
+	int 				ticket;		// 0-255: bilhete de loteria da thread
 	ucontext_t 	context;	// contexto de execução da thread (SP, PC, GPRs e recursos)
 } TCB_t;
 
+void init_cthread();
+void schduler();
+void dispatcher(TCB_t *cthread);
 int cidentify (char *name, int size);
+char *thread_to_string(s_tcb *cthread);
+int tamanho_fila(PFILA2 fila);
 #endif

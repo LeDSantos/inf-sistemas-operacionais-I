@@ -25,7 +25,7 @@ static bool has_init_cthreads = false;
 // toda thread deve passar controle para o scheduler ao sair de execução
 static ucontext_t scheduler;
 
-int ct_tid = 1;
+int threadCount = 1;
 TCB_t *main_cthread;
 
 // estados apto, bloqueado e executando
@@ -52,7 +52,7 @@ void init_cthread()
 		// criação de thread para o main
 		TCB_t main_cthread;
 		main_cthread.tid = 0;
-		main_cthread.state = 1;
+		main_cthread.state = PROCST_EXEC;
 		main_cthread.ticket = Random2();
 		getcontext(&main_cthread.context);
 
@@ -61,9 +61,41 @@ void init_cthread()
 		is_init_cthreads = TRUE;
 }
 
-TCB_t *getCurrentThread()
+/*
+** sorteia uma thread e manda para o dispatcher
+*/
+void schduler()
 {
-	return curent_cthread;
+	int draw = Random2();
+
+	TCB_t *lucky;
+	PNODE2 aux;
+
+	int diff = 255;
+	int lowest_tid = threadCount;
+
+	for(aux = filaAptos.first; aux != NULL; aux = aux.next)
+	{
+		if(aux.node.ticket == draw && aux.node.tid < lowest_tid)
+		{
+			lowest_tid = aux.node.tid;
+			lucky = &aux.node;
+		} else if(abs(lucky - aux.node.ticket) <= diff){
+			diff = abs(lucky - aux.node.ticket);
+			lowest_tid = aux.node.tid;
+			lucky = &aux.node;
+		}
+	}
+
+	for(aux = filaAptos.first; aux != NULL; aux = aux.next)
+	{
+		if aux.node.tid == lucky.tid;
+			aux = NULL;
+	}
+
+	DeleteAtIteratorFila2(filaAptos);
+
+	dispatcher(*lucky); //chama pra colocar em exec
 }
 
 /*
@@ -72,28 +104,9 @@ TCB_t *getCurrentThread()
 void dispatcher(TCB_t *cthread)
 {
 	curent_cthread = cthread;
-	cthread->state = 2;
-	printf("#Dispatcher: entrando em execução thread: %s\n", ct_to_string(cthread));
+	cthread->state = PROCST_EXEC;
+	printf("#Dispatcher#-- entrando em execução a thread: %s\n", ct_to_string(cthread));
 	setcontext(&cthread->context);
-}
-
-/*
-** sorteia uma thread e manda para o dispatcher
-*/
-void schduler()
-{
-	int drawn = Random2();
-
-	for (int i = 0; i < count; ++i)
-	{
-		/* code */
-	}
-	TCB_t *cthread_t;
-	//percore filaAptos até achar mais próximo de drawn
-
-	cthread_t = &thread_escolhida
-
-	dispatcher(*cthread); //chama pra colocar em exec
 }
 
 /*
@@ -105,13 +118,9 @@ int cidentify (char *name, int size)
 }
 
 /*
- * Usada para fins de debug.
- * Retorna uma representação da thread em um string.
- * A string retornada está em uma variável global e já é alocada pelo compilador.
- * Isso foi feito por simplicidade e para eliminar o memory leak caso fosse alocada dinâmicamente.
- * CUIDADO: cada chamada à essa função sobrepõe a variável global.
- */
-char *ct_to_string(s_tcb *cthread)
+** imprimir dados da thread pra debugar
+*/
+char *thread_to_string(s_tcb *cthread)
 {
 	char *template = "{
 		%p,
@@ -126,4 +135,13 @@ char *ct_to_string(s_tcb *cthread)
 		&cthread->context,
 		cthread->context.uc_link);
 	return (char *) ct_string;
+}
+
+int tamanho_fila(PFILA2 fila)
+{
+	PNODE2 aux;
+	int count = 0;
+	for(aux = fila->first; aux != NULL; aux = aux->next)
+		count++;
+	return count;
 }

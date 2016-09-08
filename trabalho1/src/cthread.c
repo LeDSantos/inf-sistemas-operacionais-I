@@ -28,8 +28,8 @@ int ccreate (void* (*start)(void*), void *arg)
 
 	// criação da thread
 	TCB_t cthread_t;
-	cthread_t.tid = ct_tid;	ct_tid++;
-	cthread_t.state = 0;
+	cthread_t.tid = threadCount;	threadCount++;
+	cthread_t.state = PROCST_CRIACAO;
 	cthread.ticket = Random2();
 
 	getcontext(&cthread_t.context);
@@ -43,8 +43,9 @@ int ccreate (void* (*start)(void*), void *arg)
 
 	//coloca thread na fila de aptos
 	AppendFila2(&filaAptos, (void *) &cthread_t)
-	cthread_t->state = 1;
-	return 0;
+	cthread_t->state = PROCST_APTO;
+
+	return cthread_t.tid;
 }
 
 int cyield(void)
@@ -57,10 +58,9 @@ int cyield(void)
 	TCB_t *cthread_t;
 	getcontext(&cthread_t);
 	swapcontext(&cthread_t, schduler());
-	if(AppendFila2(&filaAptos, (void *) cthread_t))
-		return 0;
-	else
-		return -1;
+	AppendFila2(&filaAptos, (void *) cthread_t)
+
+	return 0;
 }
 int cjoin(int tid)
 {
