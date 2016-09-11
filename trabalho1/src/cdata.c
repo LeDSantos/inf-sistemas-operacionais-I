@@ -7,26 +7,28 @@
 ** Sistemas Operacionais I N 2016/2
 ** Prof. Alexandre Carissimi
 **
+** Gustavo Madeira Santana
+** Cristiano Salla Lunardi
+**
 */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <ucontext.h>
 
-#include <cdata.h>
-#include <cthread.h>
-#include <support.h>
+#include "../include/cdata.h"
+#include "../include/cthread.h"
+#include "../include/support.h"
 
 #define CT_STACK_SIZE (10*SIGSTKSZ)
 
 // indicador de inicialização das estruturas de dados
-static bool has_init_cthreads = false;
+bool has_init_cthreads = false;
 
 // toda thread deve passar controle para o scheduler ao sair de execução
-static ucontext_t scheduler;
+ucontext_t scheduler;
 
 int threadCount = 1;
-TCB_t *main_thread;
 
 // estados apto, bloqueado e executando
 TCB_t *running_thread;
@@ -40,7 +42,7 @@ void scheduler()
 {
 	int draw = Random2();
 
-	TCB_t *lucky;
+	TCB_t *lucky = malloc(sizeof(TCB_t));
 	PNODE2 aux;
 
 	int diff = 255;
@@ -71,7 +73,7 @@ void scheduler()
 }
 
 /*
-** coloca thread em execução
+** coloca thread sorteada em execução
 */
 static void dispatcher(TCB_t *thread)
 {
@@ -86,26 +88,26 @@ static void dispatcher(TCB_t *thread)
 */
 static void init_cthread()
 {
-		CreateFila2(&filaAptos);
-		CreateFila2(&filaBloqueados);
+	CreateFila2(&filaAptos);
+	CreateFila2(&filaBloqueados);
 
-		// inicialização do scheduler
-		getcontext(&scheduler);
-		scheduler.uc_link = 0; //scheduler volta para main
-		scheduler.uc_stack.ss_sp = malloc(CT_STACK_SIZE);
-		scheduler.uc_stack.ss_size = sizeof(CT_STACK_SIZE);
-		makecontext(&scheduler, (void (*)(void))scheduler, 0);
+	// inicialização do scheduler
+	getcontext(&scheduler);
+	scheduler.uc_link = 0; //scheduler volta para main
+	scheduler.uc_stack.ss_sp = malloc(CT_STACK_SIZE);
+	scheduler.uc_stack.ss_size = sizeof(CT_STACK_SIZE);
+	makecontext(&scheduler, (void (*)(void))scheduler, 0);
 
-		// criação de thread para o main
-		TCB_t main_thread;
-		main_thread.tid = 0; // id da main tem que ser 0
-		main_thread.state = PROCST_EXEC;
-		main_thread.ticket = Random2();
-		getcontext(&main_thread.context);
+	// criação de thread para o main
+	TCB_t *main_thread = malloc(sizeof(TCB_t));
+	main_thread->tid = 0; // id da main tem que ser 0
+	main_thread->state = PROCST_EXEC;
+	main_thread->ticket = Random2();
+	getcontext(&main_thread->context);
 
-		running_thread = &main_thread;
+	running_thread = &main_thread;
 
-		has_init_cthreads = TRUE;
+	has_init_cthreads = TRUE;
 }
 
 /*
@@ -113,7 +115,12 @@ static void init_cthread()
 */
 int cidentify (char *name, int size)
 {
-
+	char grupo[size];
+	strcpy(grupo, "Cristiano Salla Lunardi - xxxxxx\nGustavo Madeira Santana - 252853");
+	if(strcpy(*name, grupo))
+		return 0;
+	else
+		return -1;
 }
 
 /*
@@ -122,17 +129,17 @@ int cidentify (char *name, int size)
 char *thread_to_string(s_tcb *cthread)
 {
 	char *template = "{
-		%p,
-		tid :%d,
-		state: %d,
-		&context: %p,
-		context.uc_link: %p}";
+	%p,
+	tid :%d,
+	state: %d,
+	&context: %p,
+	context.uc_link: %p}";
 	snprintf((char *) ct_string, sizeof(ct_string), template,
-		cthread,
-		cthread->tid,
-		cthread->state,
-		&cthread->context,
-		cthread->context.uc_link);
+	cthread,
+	cthread->tid,
+	cthread->state,
+	&cthread->context,
+	cthread->context.uc_link);
 	return (char *) ct_string;
 }
 

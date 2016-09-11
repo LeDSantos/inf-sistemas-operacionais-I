@@ -13,6 +13,9 @@
 ** Sistemas Operacionais I N 2016/2
 ** Prof. Alexandre Carissimi
 **
+** Gustavo Madeira Santana
+** Cristiano Salla Lunardi
+**
 */
 
 #include <ucontext.h>

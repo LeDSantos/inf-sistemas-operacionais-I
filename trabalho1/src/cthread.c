@@ -7,17 +7,21 @@
 ** Sistemas Operacionais I N 2016/2
 ** Prof. Alexandre Carissimi
 **
+** Gustavo Madeira Santana
+** Cristiano Salla Lunardi
+**
 */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <ucontext.h>
 
-#include <cdata.h>
-#include <cthread.h>
-#include <support.h>
+#include "../include/cdata.h"
+#include "../include/cthread.h"
+#include "../include/support.h"
 
-//extern?
+extern bool has_init_cthreads;
+extern ucontext_t scheduler;
 
 int ccreate (void* (*start)(void*), void *arg)
 {
@@ -27,26 +31,25 @@ int ccreate (void* (*start)(void*), void *arg)
 	}
 
 	// criação da thread
-	TCB_t c_thread;
-	c_thread = (TCB_t *)malloc(sizeof(TCB_t));	//precisa fazer malloc?
-	c_thread.tid = threadCount;	threadCount++;
-	c_thread.state = PROCST_CRIACAO;
-	cthread.ticket = Random2();
+	TCB_t *c_thread = malloc(sizeof(TCB_t));
+	c_thread->tid = threadCount; threadCount++;
+	c_thread->state = PROCST_CRIACAO;
+	c_thread->ticket = Random2();
 
-	getcontext(&c_thread.context);
+	getcontext(&c_thread->context);
 
-	c_thread.context.uc_link = &scheduler;
-	c_thread.context.uc_stack.ss_sp = malloc(CT_STACK_SIZE);
-	c_thread.context.uc_stack.ss_size = sizeof(CT_STACK_SIZE);
-	c_thread.context.uc_stack.ss_flags = 0;
+	c_thread->context.uc_link = &scheduler;
+	c_thread->context.uc_stack.ss_sp = malloc(CT_STACK_SIZE);
+	c_thread->context.uc_stack.ss_size = sizeof(CT_STACK_SIZE);
+	c_thread->context.uc_stack.ss_flags = 0;
 
-	makecontext(&c_thread.context, (void (*)(void)) start, 1, &arg);
+	makecontext(&c_thread->context, (void (*)(void)) start, 1, &arg);
 
 	//coloca thread na fila de aptos
 	AppendFila2(&filaAptos, (void *) &c_thread);
-	c_thread.state = PROCST_APTO;
+	c_thread->state = PROCST_APTO;
 
-	return c_thread.tid;
+	return c_thread->tid;
 }
 
 int cyield(void)
@@ -57,9 +60,9 @@ int cyield(void)
 	}
 
 	TCB_t *c_thread;
-	getcontext(&c_thread.context);
+	getcontext(&c_thread->context);
 	AppendFila2(&filaAptos, (void *) &c_thread);
-	swapcontext(&c_thread.context, &scheduler);
+	swapcontext(&c_thread->context, &scheduler);
 
 	return 0;
 }
