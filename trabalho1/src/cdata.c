@@ -45,12 +45,13 @@ void *scheduler()
 	{
 		AppendFila2(&filaAptos, (void *) &running_thread);
 	}
-	else if (running_thread->state == PROCST_BLOQ)
-	{
-		AppendFila2(&filaBloqueados, (void *) &running_thread);
-	}
+	// else if (running_thread->state == PROCST_BLOQ)
+	// {
+	// 	AppendFila2(&filaBloqueados, (void *) &running_thread);
+	// }
 	else
 	{
+		running_thread->state = PROCST_TERMINO;
 		free(running_thread);
 	}
 

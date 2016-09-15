@@ -78,7 +78,8 @@ int cyield(void)
 }
 
 /*
-**
+** thread em execução vai para bloqueado e espera pela thread com tid recebida
+** thread do tid recebido passa contexto para a thread que chamou cjoin ao temrinar sua execução
 */
 int cjoin(int tid)
 {
@@ -131,7 +132,19 @@ int csem_init(csem_t *sem, int count)
 		init_cthreads();
 	}
 
-	return 0;
+	csem_t *sem = malloc(sizeof(csem_t));
+	sem->count = count;
+
+	if(!CreateFila2(&sem->fila))
+	{
+		printf("semáforo criado; recursos: %d\n", sem->count);
+		return 0;
+	}
+	else
+	{
+		printf("falha ao criar semáforo\n");
+		return -1;
+	}
 }
 
 /*
@@ -144,7 +157,22 @@ int cwait(csem_t *sem)
 		init_cthreads();
 	}
 
-	return 0;
+	//checar se o sem já foi inicializado
+
+	if (sem->count == 0)
+	{
+		//colocar na fila
+		swapcontext(&running_thread->context, &scheduler);
+	}
+	else
+	{
+		sem->count--;
+		//continua executando
+		return 0;
+	}
+
+	printf("falha ao executar cwait\n");
+	return -1;
 }
 
 /*
@@ -155,6 +183,18 @@ int csignal(csem_t *sem)
 	if (!has_init_cthreads)
 	{
 		init_cthreads();
+	}
+
+	//checar se o sem já foi inicializado
+
+	if (sem->count != 0)
+	{
+		sem->count++;
+	}
+	else
+	{
+		//ver se tem alguém na fila, e colocar em apto
+		//se semáforo vazio, free nele
 	}
 
 	return 0;
