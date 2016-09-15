@@ -14,6 +14,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <ucontext.h>
 
 #include "../include/cdata.h"
@@ -22,7 +23,7 @@
 
 #define CT_STACK_SIZE (10*SIGSTKSZ)
 
-// indicador de inicialização das estruturas de dados
+// indicador de inicialização da biblioteca
 bool has_init_cthreads;
 
 // toda thread deve passar controle para o scheduler ao sair de execução
@@ -41,9 +42,17 @@ FILA2 filaBloqueados;
 void *scheduler()
 {
 	if(running_thread->state == PROCST_APTO)
+	{
 		AppendFila2(&filaAptos, (void *) &running_thread);
+	}
+	else if (running_thread->state == PROCST_BLOQ)
+	{
+		AppendFila2(&filaBloqueados, (void *) &running_thread);
+	}
 	else
+	{
 		free(running_thread);
+	}
 
 	running_thread = NULL;
 
@@ -108,6 +117,7 @@ void dispatcher(TCB_t *thread)
 
 /*
 ** inicialização das estruturas de dados
+** criação das threads main e scheduler
 */
 static void init_cthread()
 {

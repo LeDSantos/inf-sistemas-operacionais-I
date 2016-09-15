@@ -14,6 +14,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <ucontext.h>
 
 #include "../include/cdata.h"
@@ -34,7 +35,6 @@ int ccreate (void* (*start)(void*), void *arg)
 		init_cthreads();
 	}
 
-	// criação da thread
 	TCB_t *c_thread = malloc(sizeof(TCB_t));
 	c_thread->tid = thread_count; thread_count++;
 	c_thread->state = PROCST_CRIACAO;
@@ -49,11 +49,13 @@ int ccreate (void* (*start)(void*), void *arg)
 
 	makecontext(&c_thread->context, (void (*)(void)) start, 1, &arg);
 
-	//coloca thread na fila de aptos
-	AppendFila2(&filaAptos, (void *) &c_thread);
 	c_thread->state = PROCST_APTO;
 
-	return c_thread->tid;
+	if(!AppendFila2(&filaAptos, (void *) &c_thread))
+		return c_thread->tid;
+	else
+		return -1;
+
 }
 
 /*
@@ -68,9 +70,11 @@ int cyield(void)
 
 	thread_running->state = PROCST_APTO;
 
-	swapcontext(&thread_running->context, &dispatcher);
-
-	return 0;
+	if(thread_running->state == PROCST_APTO)
+			swapcontext(&thread_running->context, &dispatcher)
+			return 0;
+		else
+			return -1;
 }
 
 /*
@@ -83,7 +87,38 @@ int cjoin(int tid)
 		init_cthreads();
 	}
 
-	return 0;
+	FirstFila2(&filaAptos);
+	PNODE2 aux_it = filaAptos.it;
+
+	TCB_t *thread_to_wait = GetAtIteratorFila2(&filaAptos);
+
+	while(NextFila2(&filaAptos) == 0)
+	{
+
+		thread_to_wait = GetAtIteratorFila2(&filaAptos);
+
+		if(filaAptos.it == NULL)
+		{
+			printf("thread não existe ou já terminou ou não está na fila de aptos\n");
+			return -1;
+		}
+		else
+		{
+			if (thread_to_wait->tid == tid)
+			{
+				running_thread->state = PROCST_BLOQ;
+
+				if (running_thread->state == PROCST_BLOQ)
+				{	//ver um jeito melhor de fazer, que passe pelo scheduler
+					thread_to_wait->context.uc_link = &(running_thread->context.uc_link);
+					swapcontext(&thread_running->context, &scheduler)
+					return 0;
+				}
+			}
+		}
+
+	printf("não encontrou uma condição de parada no cjoin\n");
+	return -1;
 }
 
 /*
