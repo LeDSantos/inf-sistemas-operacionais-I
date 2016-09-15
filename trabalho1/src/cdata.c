@@ -23,59 +23,82 @@
 #define CT_STACK_SIZE (10*SIGSTKSZ)
 
 // indicador de inicialização das estruturas de dados
-bool has_init_cthreads = false;
+bool has_init_cthreads;
 
 // toda thread deve passar controle para o scheduler ao sair de execução
 ucontext_t scheduler;
 
-int threadCount = 1;
+int thread_count = 1;
 
 // estados apto, bloqueado e executando
-TCB_t *running_thread;
+TCB_t running_thread;
 FILA2 filaAptos;
 FILA2 filaBloqueados;
 
 /*
 ** sorteia uma thread e manda para o dispatcher
 */
-void scheduler()
+void *scheduler()
 {
+	if(running_thread->state == PROCST_APTO)
+		AppendFila2(&filaAptos, (void *) &running_thread);
+	else
+		free(running_thread);
+
+	running_thread = NULL;
+
 	int draw = Random2();
-
-	TCB_t *lucky = malloc(sizeof(TCB_t));
-	PNODE2 aux;
-
 	int diff = 255;
-	int lowest_tid = threadCount;
+	int lowest_tid = thread_count;
 
-	for(aux = filaAptos.first; aux != NULL; aux = aux.next)
+	FirstFila2(&filaAptos);
+	PNODE2 aux_it = filaAptos.it;
+
+	TCB_t *lucky = GetAtIteratorFila2(&filaAptos);
+	TCB_t *aux_thread = GetAtIteratorFila2(&filaAptos);
+
+	while(NextFila2(&queue_thread_ready) == 0)
 	{
-		if(aux.node.ticket == draw && aux.node.tid < lowest_tid)
+		if(queue_thread_ready.it == NULL)
+			break;
+
+		aux_thread = GetAtIteratorFila2(&filaAptos);
+		if(aux_thread = NULL) printf("Erro em GetAtIteratorFila2, cdata.c ln 67\n");
+
+		diff = abs(draw - aux_thread->ticket);
+
+		if(aux_thread->ticket == draw && aux_thread->tid < lowest_tid)
 		{
-			lowest_tid = aux.node.tid;
-			lucky = &aux.node;
-		} else if(abs(lucky - aux.node.ticket) <= diff){
-			diff = abs(lucky - aux.node.ticket);
-			lowest_tid = aux.node.tid;
-			lucky = &aux.node;
+			lucky = aux_thread;
+			lowest_tid = lucky->tid;
+		}
+		else if (aux_thread->ticket <= diff)
+		{
+			if(aux_thread->ticket == diff && aux_thread->tid < lowest_tid)
+			{
+				lucky = aux_thread;
+				lowest_tid = lucky->tid;
+			}
+			else if(aux->ticket < diff)
+			{
+				lucky = aux_thread;
+				lowest_tid = lucky->tid;
+			}
 		}
 	}
 
-	for(aux = filaAptos.first; aux != NULL; aux = aux.next)
-	{
-		if aux.node.tid == lucky.tid;
-			aux = NULL;
-	}
+	filaAptos.it = aux_it;
+	DeleteAtIteratorFila2(&filaAptos);
 
-	DeleteAtIteratorFila2(filaAptos);
+	dispatcher(&lucky);
 
-	dispatcher(*lucky); //chama pra colocar em exec
+	return 0;
 }
 
 /*
 ** coloca thread sorteada em execução
 */
-static void dispatcher(TCB_t *thread)
+void dispatcher(TCB_t *thread)
 {
 	running_thread = &thread;
 	thread->state = PROCST_EXEC;
@@ -93,6 +116,7 @@ static void init_cthread()
 
 	// inicialização do scheduler
 	getcontext(&scheduler);
+	scheduler->ticket = NULL;
 	scheduler.uc_link = 0; //scheduler volta para main
 	scheduler.uc_stack.ss_sp = malloc(CT_STACK_SIZE);
 	scheduler.uc_stack.ss_size = sizeof(CT_STACK_SIZE);
@@ -108,46 +132,4 @@ static void init_cthread()
 	running_thread = &main_thread;
 
 	has_init_cthreads = TRUE;
-}
-
-/*
-** retorna identificação do grupo
-*/
-int cidentify (char *name, int size)
-{
-	char grupo[size];
-	strcpy(grupo, "Cristiano Salla Lunardi - xxxxxx\nGustavo Madeira Santana - 252853");
-	if(strcpy(*name, grupo))
-		return 0;
-	else
-		return -1;
-}
-
-/*
-** imprimir dados da thread pra debugar
-*/
-char *thread_to_string(s_tcb *cthread)
-{
-	char *template = "{
-	%p,
-	tid :%d,
-	state: %d,
-	&context: %p,
-	context.uc_link: %p}";
-	snprintf((char *) ct_string, sizeof(ct_string), template,
-	cthread,
-	cthread->tid,
-	cthread->state,
-	&cthread->context,
-	cthread->context.uc_link);
-	return (char *) ct_string;
-}
-
-int tamanho_fila(PFILA2 fila)
-{
-	PNODE2 aux;
-	int count = 0;
-	for(aux = fila->first; aux != NULL; aux = aux->next)
-		count++;
-	return count;
 }

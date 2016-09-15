@@ -33,7 +33,5 @@ typedef struct s_TCB {
 void schduler();
 void dispatcher(TCB_t *cthread);
 void init_cthread();
-int cidentify (char *name, int size);
-char *thread_to_string(s_tcb *cthread);
-int tamanho_fila(PFILA2 fila);
+
 #endif
