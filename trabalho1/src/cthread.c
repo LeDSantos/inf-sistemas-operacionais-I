@@ -117,13 +117,14 @@ int cjoin(int tid)
 				}
 			}
 		}
+	}
 
 	printf("não encontrou uma condição de parada no cjoin\n");
 	return -1;
 }
 
 /*
-**
+** inicializa semáforo
 */
 int csem_init(csem_t *sem, int count)
 {
@@ -148,7 +149,8 @@ int csem_init(csem_t *sem, int count)
 }
 
 /*
-**
+** coloca a thread em execução no semáforo
+** se a fila estiver vazia, continua executando
 */
 int cwait(csem_t *sem)
 {
@@ -176,7 +178,8 @@ int cwait(csem_t *sem)
 }
 
 /*
-**
+** libera recurso ao semáforo
+** se tem thread no semáforo, coloca em execução
 */
 int csignal(csem_t *sem)
 {
