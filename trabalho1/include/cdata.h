@@ -38,6 +38,8 @@ typedef struct s_JCB {
 void schduler();
 void dispatcher(TCB_t *cthread);
 void init_cthread();
+void cunjoin_thread(int tid);
 int find_thread(int tid, PFILA2 fila);
+int get_thread(int tid, TCB_t thread, PFILA2 fila);
 
 #endif

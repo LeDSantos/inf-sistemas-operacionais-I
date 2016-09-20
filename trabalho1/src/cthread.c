@@ -116,24 +116,22 @@ int cjoin(int tid)
 */
 int csem_init(csem_t *sem, int count)
 {
-  if (!has_init_cthreads)
+  if(!has_init_cthreads)
   {
     init_cthreads();
   }
 
-  csem_t *sem = malloc(sizeof(csem_t));
   sem->count = count;
+  FILA2 *fila_sem = malloc(sizeof(30*TCB_t));
 
-  if(!CreateFila2(&sem->fila))
-  {
-    printf("semáforo criado; recursos: %d\n", sem->count);
-    return 0;
-  }
-  else
+  if(CreateFila2(&fila_sem))
   {
     printf("falha ao criar semáforo\n");
     return -1;
   }
+    sem->fila = &fila;
+    printf("semáforo criado; recursos: %d\n", sem->count);
+    return 0;
 }
 
 /*
@@ -142,27 +140,28 @@ int csem_init(csem_t *sem, int count)
 */
 int cwait(csem_t *sem)
 {
-  if (!has_init_cthreads)
+  if(!has_init_cthreads)
   {
     init_cthreads();
   }
 
-  //checar se o sem já foi inicializado
-
-  if (sem->count == 0)
+  if(FirstFila2(&(sem->fila)))
   {
-    //colocar na fila
-    swapcontext(&running_thread->context, &scheduler);
+    printf("semáforo não foi inicializado corretamente\n");
+    return -1
   }
-  else
+
+  if(sem->count == 0)
   {
-    sem->count--;
-    //continua executando
+    printf("nenhum recurso disponível, entrou na fila\n");
+    running_thread->state = PROCST_BLOQ;
+    AppendFila2(&(sem->fila), (void *) &running_thread);
+    swapcontext(&running_thread->context, &scheduler);
     return 0;
   }
 
-  printf("falha ao executar cwait\n");
-  return -1;
+  sem->count--;
+  return 0;
 }
 
 /*
@@ -171,23 +170,30 @@ int cwait(csem_t *sem)
 */
 int csignal(csem_t *sem)
 {
-  if (!has_init_cthreads)
+  if(!has_init_cthreads)
   {
     init_cthreads();
   }
 
-  //checar se o sem já foi inicializado
-
-  if (sem->count != 0)
+  if(FirstFila2(&(sem->fila)))
   {
-    sem->count++;
-  }
-  else
-  {
-    //ver se tem alguém na fila, e colocar em apto
-    //se semáforo vazio, free nele
+    printf("semáforo não foi inicializado corretamente\n");
+    return -1
   }
 
+  if(sem->count == 0)
+  {
+    FirstFila2(&(sem->fila));
+
+    TCB_t *thread = GetAtIteratorFila2(&(sem->fila));
+    thread->state = PROCST_APTO;
+
+    AppendFila2(&filaAptos, (void *) &thread);
+
+    return 0;
+  }
+
+  sem->count++;
   return 0;
 }
 
@@ -197,7 +203,7 @@ int csignal(csem_t *sem)
 int cidentify (char *name, int size)
 {
   char grupo[size];
-  strcpy(grupo, "Cristiano Salla Lunardi - xxxxxx\nGustavo Madeira Santana - 252853");
+  strcpy(grupo, "Cristiano Salla Lunardi - 240508\nGustavo Madeira Santana - 252853");
   if(strcpy(*name, grupo))
     return 0;
   else

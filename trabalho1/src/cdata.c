@@ -45,7 +45,7 @@ void *scheduler()
   {
     AppendFila2(&filaAptos, (void *) &running_thread);
   }
-  else if (running_thread->state == PROCST_BLOQ)
+  else if(running_thread->state == PROCST_BLOQ)
   {
    AppendFila2(&filaBloqueados, (void *) &running_thread);
   }
@@ -85,7 +85,7 @@ void *scheduler()
       lucky = aux_thread;
       lowest_tid = lucky->tid;
     }
-    else if (aux_thread->ticket <= diff)
+    else if(aux_thread->ticket <= diff)
     {
       if(aux_thread->ticket == diff && aux_thread->tid < lowest_tid)
       {
@@ -151,7 +151,7 @@ void cunjoin_thread(int tid)
 {
   TCB_t *thread;
 
-  if (!get_thread(tid, &thread, filaBloqueados))
+  if(!get_thread(tid, &thread, filaBloqueados))
   {
     thread = thread->thread;
     AppendFila2(&filaAptos, (void *) &thread);
