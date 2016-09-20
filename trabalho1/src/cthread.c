@@ -24,37 +24,41 @@
 extern bool has_init_cthreads;
 extern ucontext_t scheduler;
 extern TCB_t running_thread;
+extern int thread_count = 1;
+extern TCB_t running_thread;
+extern FILA2 filaAptos;
+extern FILA2 filaBloqueados;
 
 /*
 ** cria uma thread e a coloca na fila de aptos
 */
 int ccreate (void* (*start)(void*), void *arg)
 {
-	if (!has_init_cthreads)
-	{
-		init_cthreads();
-	}
+  if (!has_init_cthreads)
+  {
+    init_cthreads();
+  }
 
-	TCB_t *c_thread = malloc(sizeof(TCB_t));
-	c_thread->tid = thread_count; thread_count++;
-	c_thread->state = PROCST_CRIACAO;
-	c_thread->ticket = Random2();
+  TCB_t *c_thread = malloc(sizeof(TCB_t));
+  c_thread->tid = thread_count; thread_count++;
+  c_thread->state = PROCST_CRIACAO;
+  c_thread->ticket = Random2();
 
-	getcontext(&c_thread->context);
+  getcontext(&c_thread->context);
 
-	c_thread->context.uc_link = &scheduler;
-	c_thread->context.uc_stack.ss_sp = malloc(CT_STACK_SIZE);
-	c_thread->context.uc_stack.ss_size = sizeof(CT_STACK_SIZE);
-	c_thread->context.uc_stack.ss_flags = 0;
+  c_thread->context.uc_link = &scheduler;
+  c_thread->context.uc_stack.ss_sp = malloc(CT_STACK_SIZE);
+  c_thread->context.uc_stack.ss_size = sizeof(CT_STACK_SIZE);
+  c_thread->context.uc_stack.ss_flags = 0;
 
-	makecontext(&c_thread->context, (void (*)(void)) start, 1, &arg);
+  makecontext(&c_thread->context, (void (*)(void)) start, 1, &arg);
 
-	c_thread->state = PROCST_APTO;
+  c_thread->state = PROCST_APTO;
 
-	if(!AppendFila2(&filaAptos, (void *) &c_thread))
-		return c_thread->tid;
-	else
-		return -1;
+  if(!AppendFila2(&filaAptos, (void *) &c_thread))
+    return c_thread->tid;
+  else
+    return -1;
 
 }
 
@@ -63,18 +67,18 @@ int ccreate (void* (*start)(void*), void *arg)
 */
 int cyield(void)
 {
-		if (!has_init_cthreads)
-	{
-		init_cthreads();
-	}
+    if (!has_init_cthreads)
+  {
+    init_cthreads();
+  }
 
-	thread_running->state = PROCST_APTO;
+  thread_running->state = PROCST_APTO;
 
-	if(thread_running->state == PROCST_APTO)
-			swapcontext(&thread_running->context, &dispatcher)
-			return 0;
-		else
-			return -1;
+  if(thread_running->state == PROCST_APTO)
+      swapcontext(&thread_running->context, &dispatcher);
+      return 0;
+    else
+      return -1;
 }
 
 /*
@@ -83,69 +87,53 @@ int cyield(void)
 */
 int cjoin(int tid)
 {
-	if (!has_init_cthreads)
-	{
-		init_cthreads();
-	}
+  if(!find_thread(tid, &filaAptos) || !find_thread(tid, &filaBloqueados))
+  {
+    TCB_t *thread = thread_running;
+    JCB_t *join_thread = malloc(sizeof(JCB_t));
 
-	FirstFila2(&filaAptos);
-	PNODE2 aux_it = filaAptos.it;
+    join_thread->tid = tid;
+    join_thread->thread = thread;
 
-	TCB_t *thread_to_wait = GetAtIteratorFila2(&filaAptos);
+    AppendFila2(&filaBloqueados, (void*)join_thread);
 
-	while(NextFila2(&filaAptos) == 0)
-	{
+    thread->state = PROCST_BLOQ;
 
-		thread_to_wait = GetAtIteratorFila2(&filaAptos);
+    swapcontext(&thread->context, &dispatcher);
 
-		if(filaAptos.it == NULL)
-		{
-			printf("thread não existe ou já terminou ou não está na fila de aptos\n");
-			return -1;
-		}
-		else
-		{
-			if (thread_to_wait->tid == tid)
-			{
-				running_thread->state = PROCST_BLOQ;
-
-				if (running_thread->state == PROCST_BLOQ)
-				{	//ver um jeito melhor de fazer, que passe pelo scheduler
-					thread_to_wait->context.uc_link = &(running_thread->context.uc_link);
-					swapcontext(&thread_running->context, &scheduler)
-					return 0;
-				}
-			}
-		}
-	}
-
-	printf("não encontrou uma condição de parada no cjoin\n");
-	return -1;
+    return 0;
+  }
+  else
+  {
+    printf("thread não existe ou já terminou ou não está na fila de aptos\n");
+    return -1;
+  }
 }
+
 
 /*
 ** inicializa semáforo
 */
 int csem_init(csem_t *sem, int count)
 {
-	if (!has_init_cthreads)
-	{
-		init_cthreads();
-	}
+  if (!has_init_cthreads)
+  {
+    init_cthreads();
+  }
 
-	csem_t *sem = malloc(sizeof(csem_t));
-	sem->count = count;
+  csem_t *sem = malloc(sizeof(csem_t));
+  sem->count = count;
 
-	if(!CreateFila2(&sem->fila))
-	{
-		printf("semáforo criado; recursos: %d\n", sem->count);
-		return 0;
-	}
-	else
-	{
-		printf("falha ao criar semáforo\n");
-		return -1;
-	}
+  if(!CreateFila2(&sem->fila))
+  {
+    printf("semáforo criado; recursos: %d\n", sem->count);
+    return 0;
+  }
+  else
+  {
+    printf("falha ao criar semáforo\n");
+    return -1;
+  }
 }
 
 /*
@@ -154,27 +142,27 @@ int csem_init(csem_t *sem, int count)
 */
 int cwait(csem_t *sem)
 {
-	if (!has_init_cthreads)
-	{
-		init_cthreads();
-	}
+  if (!has_init_cthreads)
+  {
+    init_cthreads();
+  }
 
-	//checar se o sem já foi inicializado
+  //checar se o sem já foi inicializado
 
-	if (sem->count == 0)
-	{
-		//colocar na fila
-		swapcontext(&running_thread->context, &scheduler);
-	}
-	else
-	{
-		sem->count--;
-		//continua executando
-		return 0;
-	}
+  if (sem->count == 0)
+  {
+    //colocar na fila
+    swapcontext(&running_thread->context, &scheduler);
+  }
+  else
+  {
+    sem->count--;
+    //continua executando
+    return 0;
+  }
 
-	printf("falha ao executar cwait\n");
-	return -1;
+  printf("falha ao executar cwait\n");
+  return -1;
 }
 
 /*
@@ -183,24 +171,24 @@ int cwait(csem_t *sem)
 */
 int csignal(csem_t *sem)
 {
-	if (!has_init_cthreads)
-	{
-		init_cthreads();
-	}
+  if (!has_init_cthreads)
+  {
+    init_cthreads();
+  }
 
-	//checar se o sem já foi inicializado
+  //checar se o sem já foi inicializado
 
-	if (sem->count != 0)
-	{
-		sem->count++;
-	}
-	else
-	{
-		//ver se tem alguém na fila, e colocar em apto
-		//se semáforo vazio, free nele
-	}
+  if (sem->count != 0)
+  {
+    sem->count++;
+  }
+  else
+  {
+    //ver se tem alguém na fila, e colocar em apto
+    //se semáforo vazio, free nele
+  }
 
-	return 0;
+  return 0;
 }
 
 /*
@@ -208,10 +196,10 @@ int csignal(csem_t *sem)
 */
 int cidentify (char *name, int size)
 {
-	char grupo[size];
-	strcpy(grupo, "Cristiano Salla Lunardi - xxxxxx\nGustavo Madeira Santana - 252853");
-	if(strcpy(*name, grupo))
-		return 0;
-	else
-		return -1;
+  char grupo[size];
+  strcpy(grupo, "Cristiano Salla Lunardi - xxxxxx\nGustavo Madeira Santana - 252853");
+  if(strcpy(*name, grupo))
+    return 0;
+  else
+    return -1;
 }

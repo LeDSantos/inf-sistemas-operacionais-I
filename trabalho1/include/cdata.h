@@ -30,8 +30,14 @@ typedef struct s_TCB {
 	ucontext_t 	context;	// contexto de execução da thread (SP, PC, GPRs e recursos)
 } TCB_t;
 
+typedef struct s_JCB {
+    int tid;  //tid da thread bloqueante
+    TCB_t *thread; // thread bloqueada
+} JCB_t;
+
 void schduler();
 void dispatcher(TCB_t *cthread);
 void init_cthread();
+int find_thread(int tid, PFILA2 fila);
 
 #endif
