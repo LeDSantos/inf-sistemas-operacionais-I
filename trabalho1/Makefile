@@ -1,3 +1,4 @@
+
 #
 # Makefile ESQUELETO
 #
@@ -8,26 +9,32 @@
 #  1. Cuidado com a regra "clean" para não apagar o "fila2.o"
 #
 # OBSERVAR que as variáveis de ambiente consideram que o Makefile está no diretótio "cthread"
-# 
+#
+
+LIB=./lib/
+INC=./include/
+BIN=./bin/
+SRC=./src/
+TST=./testes/
+
+DIRS=$(LIB) $(INC) $(BIN) $(SRC) $(TST)
 
 CC=gcc
-LIB_DIR=./lib
-INC_DIR=./include
-BIN_DIR=./bin
-SRC_DIR=./src
+CCFLAGS=-c -m32 -Wall
 
-all: regra1 regra2 regran
+all: teste
 
-regra1: #dependências para a regra1
-	$(CC) -o $(BIN_DIR)regra1 $(SRC_DIR)regra1.c -Wall
+teste: cdata.o cthread.o teste1.o
+	$(CC) $(TST)teste1.o $(SRC)cdata.o $(SRC)cthread.o $(BIN)suporte.o -o teste1
 
-regra2: #dependências para a regra2
-	$(CC) -o $(BIN_DIR)regra2 $(SRC_DIR)regra2.c -Wall
+teste1.o:
+	$(CC) $(CCFLAGS) $(TST)teste1.c
 
-regran: #dependências para a regran
-	$(CC) -o $(BIN_DIR)regran $(SRC_DIR)regran.c -Wall
+cdata.o:
+	$(CC) $(CCFLAGS) $(SRC)cdata.c
+
+cthread.o:
+	$(CC) $(CCFLAGS) $(SRC)cthread.c
 
 clean:
-	rm -rf $(LIB_DIR)/*.a $(BIN_DIR)/*.o $(SRC_DIR)/*~ $(INC_DIR)/*~ *~
-
-
+	find $(BIN) $(LIB) $(TST) -type f ! -name 'support.o' ! -name "*.c" -delete

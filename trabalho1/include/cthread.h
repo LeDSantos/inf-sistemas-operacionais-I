@@ -5,20 +5,10 @@
  * NÃO MODIFIQUE ESTE ARQUIVO.
  *
  * VERSÃO 1 - 04/04/2016
-**
-** cthread.h
-** Biblioteca cthreads
-**
-** Instituto de Informática - UFRGS
-** Sistemas Operacionais I N 2016/2
-** Prof. Alexandre Carissimi
-**
-** Gustavo Madeira Santana
-** Cristiano Salla Lunardi
-**
 */
 
-#include <ucontext.h>
+#include "../include/cdata.h"
+#include "../include/support.h"
 
 #ifndef __cthread__
 #define __cthread__

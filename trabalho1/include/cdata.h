@@ -15,6 +15,9 @@
 #ifndef __cdata__
 #define __cdata__
 
+#include "../include/support.h"
+#include "../include/cthread.h"
+
 #define	PROCST_CRIACAO	0
 #define	PROCST_APTO	1
 #define	PROCST_EXEC	2
@@ -35,11 +38,10 @@ typedef struct s_JCB {
     TCB_t *thread; // thread bloqueada
 } JCB_t;
 
-void schduler();
-void dispatcher(TCB_t *cthread);
+void cschduler();
 void init_cthread();
 void cunjoin_thread(int tid);
 int find_thread(int tid, PFILA2 fila);
-int get_thread(int tid, TCB_t thread, PFILA2 fila);
+int get_thread(int tid, TCB_t *thread, PFILA2 fila);
 
 #endif

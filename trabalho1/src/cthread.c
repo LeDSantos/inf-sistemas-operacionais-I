@@ -17,15 +17,14 @@
 #include <stdbool.h>
 #include <ucontext.h>
 
-#include "../include/cdata.h"
 #include "../include/cthread.h"
-#include "../include/support.h"
+
+#define CT_STACK_SIZE (10*SIGSTKSZ)
 
 extern bool has_init_cthreads;
 extern ucontext_t scheduler;
 extern TCB_t running_thread;
 extern int thread_count = 1;
-extern TCB_t running_thread;
 extern FILA2 filaAptos;
 extern FILA2 filaBloqueados;
 
@@ -67,18 +66,22 @@ int ccreate (void* (*start)(void*), void *arg)
 */
 int cyield(void)
 {
-    if (!has_init_cthreads)
+  if (!has_init_cthreads)
   {
     init_cthreads();
   }
 
-  thread_running->state = PROCST_APTO;
+  running_thread.state = PROCST_APTO;
 
-  if(thread_running->state == PROCST_APTO)
-      swapcontext(&thread_running->context, &dispatcher);
-      return 0;
-    else
-      return -1;
+  if(running_thread.state == PROCST_APTO)
+  {
+    swapcontext(&running_thread.context, &scheduler);
+    return 0;
+  }
+  else
+  {
+    return -1;
+  }
 }
 
 /*
@@ -89,7 +92,7 @@ int cjoin(int tid)
 {
   if(!find_thread(tid, &filaAptos) || !find_thread(tid, &filaBloqueados))
   {
-    TCB_t *thread = thread_running;
+    TCB_t *thread = running_thread;
     JCB_t *join_thread = malloc(sizeof(JCB_t));
 
     join_thread->tid = tid;
@@ -99,7 +102,7 @@ int cjoin(int tid)
 
     thread->state = PROCST_BLOQ;
 
-    swapcontext(&thread->context, &dispatcher);
+    swapcontext(&thread->context, &scheduler);
 
     return 0;
   }
@@ -129,7 +132,7 @@ int csem_init(csem_t *sem, int count)
     printf("falha ao criar semáforo\n");
     return -1;
   }
-    sem->fila = &fila;
+    sem->fila = &fila_sem;
     printf("semáforo criado; recursos: %d\n", sem->count);
     return 0;
 }
@@ -148,15 +151,15 @@ int cwait(csem_t *sem)
   if(FirstFila2(&(sem->fila)))
   {
     printf("semáforo não foi inicializado corretamente\n");
-    return -1
+    return -1;
   }
 
   if(sem->count == 0)
   {
     printf("nenhum recurso disponível, entrou na fila\n");
-    running_thread->state = PROCST_BLOQ;
+    running_thread.state = PROCST_BLOQ;
     AppendFila2(&(sem->fila), (void *) &running_thread);
-    swapcontext(&running_thread->context, &scheduler);
+    swapcontext(&running_thread.context, &scheduler);
     return 0;
   }
 
@@ -178,7 +181,7 @@ int csignal(csem_t *sem)
   if(FirstFila2(&(sem->fila)))
   {
     printf("semáforo não foi inicializado corretamente\n");
-    return -1
+    return -1;
   }
 
   if(sem->count == 0)

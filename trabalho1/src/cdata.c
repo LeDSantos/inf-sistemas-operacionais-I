@@ -14,17 +14,16 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <ucontext.h>
 
 #include "../include/cdata.h"
-#include "../include/cthread.h"
-#include "../include/support.h"
 
+#define TRUE 1
+#define FALSE 0
 #define CT_STACK_SIZE (10*SIGSTKSZ)
 
 // indicador de inicialização da biblioteca
-bool has_init_cthreads;
+int has_init_cthreads;
 
 // toda thread deve passar controle para o scheduler ao sair de execução
 ucontext_t scheduler;
@@ -36,27 +35,29 @@ TCB_t running_thread;
 FILA2 filaAptos;
 FILA2 filaBloqueados;
 
+FILA2 filaJCB;
+
 /*
 ** sorteia uma thread e manda para o dispatcher
 */
-void *scheduler()
+void *cscheduler()
 {
-  if(running_thread->state == PROCST_APTO)
+  if(running_thread.state == PROCST_APTO)
   {
     AppendFila2(&filaAptos, (void *) &running_thread);
   }
-  else if(running_thread->state == PROCST_BLOQ)
+  else if(running_thread.state == PROCST_BLOQ)
   {
    AppendFila2(&filaBloqueados, (void *) &running_thread);
   }
   else
   {
-    running_thread->state = PROCST_TERMINO;
-    cunjoin_thread(running_thread->tid);
-    free(running_thread);
+    running_thread.state = PROCST_TERMINO;
+    cunjoin_thread(running_thread.tid);
+    free(&running_thread);
   }
 
-  running_thread = 0;
+  // running_thread = 0;
 
   int draw = Random2();
   int diff = 255;
@@ -68,9 +69,9 @@ void *scheduler()
   TCB_t *lucky = GetAtIteratorFila2(&filaAptos);
   TCB_t *aux_thread = GetAtIteratorFila2(&filaAptos);
 
-  while(NextFila2(&queue_thread_ready) == 0)
+  while(NextFila2(&filaAptos) == 0)
   {
-    if(queue_thread_ready.it == NULL)
+    if(filaAptos.it == NULL)
     {
       break;
     }
@@ -92,7 +93,7 @@ void *scheduler()
         lucky = aux_thread;
         lowest_tid = lucky->tid;
       }
-      else if(aux->ticket < diff)
+      else if(aux_thread->ticket < diff)
       {
         lucky = aux_thread;
         lowest_tid = lucky->tid;
@@ -103,37 +104,34 @@ void *scheduler()
   filaAptos.it = aux_it;
   DeleteAtIteratorFila2(&filaAptos);
 
-  dispatcher(&lucky);
-
-  return 0;
-}
-
 /*
+** dispatcher
 ** coloca thread sorteada em execução
 */
-void dispatcher(TCB_t *thread)
-{
-  running_thread = &thread;
-  thread->state = PROCST_EXEC;
-  printf("#Dispatcher#-- entrando em execução a thread: %s\n", ct_to_string(cthread));
-  setcontext(&thread->context);
+
+  running_thread = &lucky;
+  lucky->state = PROCST_EXEC;
+  setcontext(&lucky->context);
+
+  return 0;
 }
 
 /*
 ** inicialização das estruturas de dados
 ** criação das threads main e scheduler
 */
-static void init_cthread()
+void init_cthread()
 {
   CreateFila2(&filaAptos);
   CreateFila2(&filaBloqueados);
+  CreateFila2(&filaJCB);
 
   // inicialização do scheduler
   getcontext(&scheduler);
   scheduler.uc_link = 0; //scheduler volta para main
   scheduler.uc_stack.ss_sp = malloc(CT_STACK_SIZE);
   scheduler.uc_stack.ss_size = sizeof(CT_STACK_SIZE);
-  makecontext(&scheduler, (void (*)(void))scheduler, 0);
+  makecontext(&scheduler, (void (*)(void))cscheduler, 0);
 
   // criação de thread para a main
   TCB_t *main_thread = malloc(sizeof(TCB_t));
@@ -149,14 +147,15 @@ static void init_cthread()
 
 void cunjoin_thread(int tid)
 {
+  JCB_t *join_thread;
   TCB_t *thread;
 
-  if(!get_thread(tid, &thread, filaBloqueados))
+  if(!get_thread(tid, &join_thread, filaJCB))
   {
-    thread = thread->thread;
+    thread = join_thread->thread;
     AppendFila2(&filaAptos, (void *) &thread);
     DeleteAtIteratorFila2(&filaBloqueados);
-    setcontext(&dispatcher);
+    setcontext(&scheduler);
   }
 }
 
@@ -182,7 +181,7 @@ int find_thread(int tid, PFILA2 fila)
   return -1;
 }
 
-int get_thread(int tid, TCB_t thread, PFILA2 fila)
+int get_thread(int tid, TCB_t *thread, PFILA2 fila)
 {
   FirstFila2(fila);
 
@@ -193,7 +192,7 @@ int get_thread(int tid, TCB_t thread, PFILA2 fila)
       break;
     }
 
-    *thread = (TCB_t*)GetAtIteratorFila2(fila);
+    thread = (TCB_t*)GetAtIteratorFila2(fila);
 
     if(thread->tid == tid)
     {
