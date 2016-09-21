@@ -71,11 +71,11 @@ int cyield(void)
     init_cthreads();
   }
 
-  running_thread.state = PROCST_APTO;
+  running_thread->state = PROCST_APTO;
 
-  if(running_thread.state == PROCST_APTO)
+  if(running_thread->state == PROCST_APTO)
   {
-    swapcontext(&running_thread.context, &scheduler);
+    swapcontext(&running_thread->context, &scheduler);
     return 0;
   }
   else
@@ -92,7 +92,7 @@ int cjoin(int tid)
 {
   if(!find_thread(tid, &filaAptos) || !find_thread(tid, &filaBloqueados))
   {
-    TCB_t *thread = running_thread;
+    TCB_t *thread = &running_thread;
     JCB_t *join_thread = malloc(sizeof(JCB_t));
 
     join_thread->tid = tid;
@@ -125,7 +125,7 @@ int csem_init(csem_t *sem, int count)
   }
 
   sem->count = count;
-  FILA2 *fila_sem = malloc(sizeof(30*TCB_t));
+  FILA2 *fila_sem = malloc(sizeof(filaAptos));
 
   if(CreateFila2(&fila_sem))
   {
@@ -157,9 +157,9 @@ int cwait(csem_t *sem)
   if(sem->count == 0)
   {
     printf("nenhum recurso disponível, entrou na fila\n");
-    running_thread.state = PROCST_BLOQ;
+    running_thread->state = PROCST_BLOQ;
     AppendFila2(&(sem->fila), (void *) &running_thread);
-    swapcontext(&running_thread.context, &scheduler);
+    swapcontext(&running_thread->context, &scheduler);
     return 0;
   }
 
@@ -205,9 +205,9 @@ int csignal(csem_t *sem)
 */
 int cidentify (char *name, int size)
 {
-  char grupo[size];
-  strcpy(grupo, "Cristiano Salla Lunardi - 240508\nGustavo Madeira Santana - 252853");
-  if(strcpy(*name, grupo))
+  char *grupo[size];
+  strcpy(*grupo, "Cristiano Salla Lunardi - 240508\nGustavo Madeira Santana - 252853");
+  if(strcpy(*name, *grupo))
     return 0;
   else
     return -1;

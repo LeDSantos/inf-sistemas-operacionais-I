@@ -24,7 +24,7 @@ CCFLAGS=-c -m32 -Wall
 
 all: teste
 
-teste: cdata.o cthread.o teste1.o
+teste: cthread.o cdata.o teste1.o
 	$(CC) $(TST)teste1.o $(SRC)cdata.o $(SRC)cthread.o $(BIN)suporte.o -o teste1
 
 teste1.o:

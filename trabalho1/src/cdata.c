@@ -31,7 +31,7 @@ ucontext_t scheduler;
 int thread_count = 1;
 
 // estados apto, bloqueado e executando
-TCB_t running_thread;
+TCB_t *running_thread;
 FILA2 filaAptos;
 FILA2 filaBloqueados;
 
@@ -42,22 +42,22 @@ FILA2 filaJCB;
 */
 void *cscheduler()
 {
-  if(running_thread.state == PROCST_APTO)
+  if(running_thread->state == PROCST_APTO)
   {
     AppendFila2(&filaAptos, (void *) &running_thread);
   }
-  else if(running_thread.state == PROCST_BLOQ)
+  else if(running_thread->state == PROCST_BLOQ)
   {
    AppendFila2(&filaBloqueados, (void *) &running_thread);
   }
   else
   {
-    running_thread.state = PROCST_TERMINO;
-    cunjoin_thread(running_thread.tid);
+    running_thread->state = PROCST_TERMINO;
+    cunjoin_thread(running_thread->tid);
     free(&running_thread);
   }
 
-  // running_thread = 0;
+  running_thread = NULL;
 
   int draw = Random2();
   int diff = 255;
@@ -109,7 +109,7 @@ void *cscheduler()
 ** coloca thread sorteada em execução
 */
 
-  running_thread = &lucky;
+  running_thread = lucky;
   lucky->state = PROCST_EXEC;
   setcontext(&lucky->context);
 
@@ -140,7 +140,7 @@ void init_cthread()
   main_thread->ticket = Random2();
   getcontext(&main_thread->context);
 
-  running_thread = &main_thread;
+  running_thread = main_thread;
 
   has_init_cthreads = TRUE;
 }
@@ -150,7 +150,7 @@ void cunjoin_thread(int tid)
   JCB_t *join_thread;
   TCB_t *thread;
 
-  if(!get_thread(tid, &join_thread, filaJCB))
+  if(!get_jcb(tid, &join_thread, filaJCB))
   {
     thread = join_thread->thread;
     AppendFila2(&filaAptos, (void *) &thread);
@@ -182,6 +182,27 @@ int find_thread(int tid, PFILA2 fila)
 }
 
 int get_thread(int tid, TCB_t *thread, PFILA2 fila)
+{
+  FirstFila2(fila);
+
+  while(NextFila2(fila) == 0)
+  {
+    if(fila->it == 0)
+    {
+      break;
+    }
+
+    thread = (TCB_t*)GetAtIteratorFila2(fila);
+
+    if(thread->tid == tid)
+    {
+      return 0;
+    }
+  }
+  return -1;
+}
+
+int get_jcb(int tid, JCB_t *thread, PFILA2 fila)
 {
   FirstFila2(fila);
 
