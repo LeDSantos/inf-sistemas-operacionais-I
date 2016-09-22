@@ -45,7 +45,8 @@ void excl(){
 
 int main()
 {
-	thello = ccreate((void *)hello, (void *)NULL);
+	printf("criar thread para função hello\n");
+	thello = ccreate((void *)hello, NULL);
 	printf("sou a thread %d", thello);
 
 	tspace = ccreate((void *)space, (void *)NULL);

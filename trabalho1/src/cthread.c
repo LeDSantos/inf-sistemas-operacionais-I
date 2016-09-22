@@ -17,16 +17,22 @@
 #include <stdbool.h>
 #include <ucontext.h>
 
-#include "../include/cthread.h"
+#include <cthread.h>
 
-#define CT_STACK_SIZE (10*SIGSTKSZ)
+// indicador de inicialização da biblioteca
+int has_init_cthreads = FALSE;
+int thread_count = 1;
 
-extern bool has_init_cthreads;
-extern ucontext_t scheduler;
-extern TCB_t running_thread;
-extern int thread_count = 1;
-extern FILA2 filaAptos;
-extern FILA2 filaBloqueados;
+// toda thread deve passar controle para o scheduler ao sair de execução
+ucontext_t scheduler;
+
+// estados apto, bloqueado e executando
+TCB_t *running_thread;
+FILA2 filaAptos;
+FILA2 filaBloqueados;
+
+// fila do join
+FILA2 filaJCB;
 
 /*
 ** cria uma thread e a coloca na fila de aptos
@@ -38,27 +44,26 @@ int ccreate (void* (*start)(void*), void *arg)
     init_cthreads();
   }
 
-  TCB_t *c_thread = malloc(sizeof(TCB_t));
-  c_thread->tid = thread_count; thread_count++;
-  c_thread->state = PROCST_CRIACAO;
-  c_thread->ticket = Random2();
+  TCB_t *cthread = malloc(sizeof(TCB_t));
+  cthread->tid = thread_count; thread_count++;
+  cthread->state = PROCST_CRIACAO;
+  cthread->ticket = Random2();
 
-  getcontext(&c_thread->context);
+  getcontext(&cthread->context);
 
-  c_thread->context.uc_link = &scheduler;
-  c_thread->context.uc_stack.ss_sp = malloc(CT_STACK_SIZE);
-  c_thread->context.uc_stack.ss_size = sizeof(CT_STACK_SIZE);
-  c_thread->context.uc_stack.ss_flags = 0;
+  cthread->context.uc_link = &scheduler;
+  cthread->context.uc_stack.ss_sp = CT_STACK_SIZE;
+  cthread->context.uc_stack.ss_size = sizeof(CT_STACK_SIZE);
+  cthread->context.uc_stack.ss_flags = 0;
 
-  makecontext(&c_thread->context, (void (*)(void)) start, 1, &arg);
+  makecontext(&(cthread->context), (void (*)(void)) start, 1, &arg);
 
-  c_thread->state = PROCST_APTO;
+  cthread->state = PROCST_APTO;
 
-  if(!AppendFila2(&filaAptos, (void *) &c_thread))
-    return c_thread->tid;
-  else
+  if(AppendFila2(&filaAptos, (void *) &cthread))
     return -1;
-
+  else
+    return cthread->tid;
 }
 
 /*
@@ -90,27 +95,25 @@ int cyield(void)
 */
 int cjoin(int tid)
 {
-  if(!find_thread(tid, &filaAptos) || !find_thread(tid, &filaBloqueados))
-  {
-    TCB_t *thread = &running_thread;
-    JCB_t *join_thread = malloc(sizeof(JCB_t));
-
-    join_thread->tid = tid;
-    join_thread->thread = thread;
-
-    AppendFila2(&filaBloqueados, (void*)join_thread);
-
-    thread->state = PROCST_BLOQ;
-
-    swapcontext(&thread->context, &scheduler);
-
-    return 0;
-  }
-  else
+  if(find_thread(tid, &filaAptos) || find_thread(tid, &filaBloqueados))
   {
     printf("thread não existe ou já terminou ou não está na fila de aptos\n");
     return -1;
   }
+
+  TCB_t *thread = &running_thread;
+  JCB_t *join_thread = malloc(sizeof(JCB_t));
+
+  join_thread->tid = tid;
+  join_thread->thread = thread;
+
+  AppendFila2(&filaBloqueados, (void*)join_thread);
+
+  thread->state = PROCST_BLOQ;
+
+  swapcontext(&thread->context, &scheduler);
+
+  return 0;
 }
 
 
@@ -125,14 +128,13 @@ int csem_init(csem_t *sem, int count)
   }
 
   sem->count = count;
-  FILA2 *fila_sem = malloc(sizeof(filaAptos));
+  sem->fila = malloc(sizeof(filaAptos));
 
-  if(CreateFila2(&fila_sem))
+  if(CreateFila2(sem->fila))
   {
     printf("falha ao criar semáforo\n");
     return -1;
   }
-    sem->fila = &fila_sem;
     printf("semáforo criado; recursos: %d\n", sem->count);
     return 0;
 }
@@ -205,10 +207,132 @@ int csignal(csem_t *sem)
 */
 int cidentify (char *name, int size)
 {
-  char *grupo[size];
-  strcpy(*grupo, "Cristiano Salla Lunardi - 240508\nGustavo Madeira Santana - 252853");
-  if(strcpy(*name, *grupo))
-    return 0;
+  char *aux = name;
+  char grupo[size];
+  strcpy(grupo, "Cristiano Salla Lunardi - 240508\nGustavo Madeira Santana - 252853");
+  strcpy(aux, grupo);
+
+  return 0;
+}
+
+/*
+** sorteia uma thread e manda para o dispatcher
+*/
+void *cscheduler()
+{
+  if(running_thread->state == PROCST_APTO)
+  {
+    AppendFila2(&filaAptos, (void *) &running_thread);
+  }
+  else if(running_thread->state == PROCST_BLOQ)
+  {
+   AppendFila2(&filaBloqueados, (void *) &running_thread);
+  }
   else
-    return -1;
+  {
+    running_thread->state = PROCST_TERMINO;
+    cunjoin_thread(running_thread->tid);
+    free(running_thread);
+  }
+
+  running_thread = NULL;
+
+  int draw = Random2();
+  int diff = 255;
+  int lowest_tid = thread_count;
+
+  FirstFila2(&filaAptos);
+  PNODE2 aux_it = filaAptos.it;
+
+  TCB_t *lucky = GetAtIteratorFila2(&filaAptos);
+  TCB_t *aux_thread = GetAtIteratorFila2(&filaAptos);
+
+  while(NextFila2(&filaAptos) == 0)
+  {
+    if(filaAptos.it == NULL)
+    {
+      break;
+    }
+
+    aux_thread = GetAtIteratorFila2(&filaAptos);
+    if(aux_thread = NULL) printf("Erro em GetAtIteratorFila2, cdata.c ln 67\n");
+
+    diff = abs(draw - aux_thread->ticket);
+
+    if(aux_thread->ticket == draw && aux_thread->tid < lowest_tid)
+    {
+      lucky = aux_thread;
+      lowest_tid = lucky->tid;
+    }
+    else if(aux_thread->ticket <= diff)
+    {
+      if(aux_thread->ticket == diff && aux_thread->tid < lowest_tid)
+      {
+        lucky = aux_thread;
+        lowest_tid = lucky->tid;
+      }
+      else if(aux_thread->ticket < diff)
+      {
+        lucky = aux_thread;
+        lowest_tid = lucky->tid;
+      }
+    }
+  }
+
+  filaAptos.it = aux_it;
+  DeleteAtIteratorFila2(&filaAptos);
+
+/*
+** dispatcher
+** coloca thread sorteada em execução
+*/
+
+  running_thread = lucky;
+  lucky->state = PROCST_EXEC;
+  setcontext(&lucky->context);
+
+  return 0;
+}
+
+/*
+** inicialização das estruturas de dados
+** criação das threads main e scheduler
+*/
+void init_cthreads()
+{
+  CreateFila2(&filaAptos);
+  CreateFila2(&filaBloqueados);
+  CreateFila2(&filaJCB);
+
+  // inicialização do scheduler
+  getcontext(&scheduler);
+  scheduler.uc_link = 0; //scheduler volta para main
+  scheduler.uc_stack.ss_sp = CT_STACK_SIZE;
+  scheduler.uc_stack.ss_size = sizeof(CT_STACK_SIZE);
+  makecontext(&scheduler, (void (*)(void))cscheduler, 0);
+
+  // criação de thread para a main
+  TCB_t *main_thread = malloc(sizeof(TCB_t));
+  main_thread->tid = 0; // id da main tem que ser 0
+  main_thread->state = PROCST_EXEC;
+  main_thread->ticket = Random2();
+  getcontext(&main_thread->context);
+
+  running_thread = main_thread;
+
+  has_init_cthreads = TRUE;
+}
+
+void cunjoin_thread(int tid)
+{
+  JCB_t *join_thread;
+  TCB_t *thread;
+
+  if(!get_jcb(tid, &join_thread, &filaJCB))
+  {
+    thread = join_thread->thread;
+    AppendFila2(&filaAptos, (void *) &thread);
+    DeleteAtIteratorFila2(&filaBloqueados);
+    setcontext(&scheduler);
+  }
 }

@@ -20,12 +20,12 @@ TST=./testes/
 DIRS=$(LIB) $(INC) $(BIN) $(SRC) $(TST)
 
 CC=gcc
-CCFLAGS=-c -m32 -Wall
+CCFLAGS=-c -m32 -Wall -I$(INC)
 
 all: teste
 
-teste: cthread.o cdata.o teste1.o
-	$(CC) $(TST)teste1.o $(SRC)cdata.o $(SRC)cthread.o $(BIN)suporte.o -o teste1
+teste: cdata.o cthread.o teste1.o
+	$(CC) teste1.o cdata.o cthread.o $(BIN)support.o -o teste1
 
 teste1.o:
 	$(CC) $(CCFLAGS) $(TST)teste1.c
@@ -37,4 +37,4 @@ cthread.o:
 	$(CC) $(CCFLAGS) $(SRC)cthread.c
 
 clean:
-	find $(BIN) $(LIB) $(TST) -type f ! -name 'support.o' ! -name "*.c" -delete
+	find . -type f ! -name 'support.o' ! -name "*.c" ! -name "*.h" ! -name "Makefile" ! -name "*.pdf" -delete

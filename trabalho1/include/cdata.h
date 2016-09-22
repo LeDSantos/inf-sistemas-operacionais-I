@@ -15,14 +15,19 @@
 #ifndef __cdata__
 #define __cdata__
 
-#include "../include/support.h"
-#include "../include/cthread.h"
+#include <support.h>
+#include <cthread.h>
+#include <ucontext.h>
 
 #define	PROCST_CRIACAO	0
 #define	PROCST_APTO	1
 #define	PROCST_EXEC	2
 #define	PROCST_BLOQ	3
 #define	PROCST_TERMINO	4
+
+#define TRUE 1
+#define FALSE 0
+#define CT_STACK_SIZE (10*SIGSTKSZ)
 
 /* NÃO ALTERAR ESSA struct */
 typedef struct s_TCB {
@@ -38,9 +43,6 @@ typedef struct s_JCB {
     TCB_t *thread; // thread bloqueada
 } JCB_t;
 
-void cschduler();
-void init_cthread();
-void cunjoin_thread(int tid);
 int find_thread(int tid, PFILA2 fila);
 int get_thread(int tid, TCB_t *thread, PFILA2 fila);
 int get_jcb(int tid, JCB_t *thread, PFILA2 fila);
