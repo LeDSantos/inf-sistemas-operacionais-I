@@ -25,7 +25,7 @@ void space();
 void world();
 void excl();
 
-int thello, tspace, tworld, texcl;
+int thello, tspace, tworld, texcl, cy;
 
 void hello(){
 	printf("hello");
@@ -45,20 +45,37 @@ void excl(){
 
 int main()
 {
-	printf("criar thread para função hello\n");
+	printf("criando uma thread para a funcao hello\n");
 	thello = ccreate((void *)hello, NULL);
-	printf("sou a thread %d", thello);
+	printf("sou a thread hello com tid: %d\n", thello);
 
+	printf("criando uma thread para a funcao space\n");
 	tspace = ccreate((void *)space, (void *)NULL);
-	printf("sou a thread %d", tspace);
+	printf("sou a thread space com tid: %d\n", tspace);
 
+	printf("criando uma thread para a funcao world\n");
 	tworld = ccreate((void *)world, (void *)NULL);
-	printf("sou a thread %d", tworld);
+	printf("sou a thread world com tid: %d\n", tworld);
 
+	printf("criando uma thread para a funcao excl\n");
 	texcl = ccreate((void *)excl, (void *)NULL);
-	printf("sou a thread %d", texcl);
+	printf("sou a thread excl com tid: %d\n", texcl);
 
-	cyield();
+	printf("yield 1 na main\n");
+	cy = cyield();
+	printf("cyield: %d\n", cy);
+
+	printf("yield 2 na main\n");
+	cy = cyield();
+	printf("cyield: %d\n", cy);
+
+	printf("yield 3 na main\n");
+	cy = cyield();
+	printf("cyield: %d\n", cy);
+
+	printf("yield 4 na main\n");
+	cy = cyield();
+	printf("cyield: %d\n", cy);
 
 	return 0;
 }

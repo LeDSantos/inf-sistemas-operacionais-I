@@ -27,7 +27,6 @@
 
 #define TRUE 1
 #define FALSE 0
-#define CT_STACK_SIZE (10*SIGSTKSZ)
 
 /* NÃO ALTERAR ESSA struct */
 typedef struct s_TCB {
