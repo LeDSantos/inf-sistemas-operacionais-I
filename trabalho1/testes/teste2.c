@@ -22,23 +22,21 @@
 
 int	id1, id2;
 
-void* func1(void *arg) {
+void func1(void *arg) {
 	printf("join ID2\n");
 	cjoin(id2);
 	printf("Eu sou a thread ID1 imprimindo %d\n", *((int *)arg));
-	return;
 }
 
-void* func2(void *arg) {
-
+void func2(void *arg) {
 	printf("Eu sou a thread ID2 imprimindo %d\n", *((int *)arg));
 }
 
 int main(int argc, char *argv[]) {
 	int i;
 
-	id1 = ccreate(func1, (void *)&i);
-	id2 = ccreate(func2, (void *)&i);
+	id1 = ccreate((void *)func1, (void *)&i);
+	id2 = ccreate((void *)func2, (void *)&i);
 
 	printf("Eu sou a main apos a criacao de ID1 e ID2\n\n");
 

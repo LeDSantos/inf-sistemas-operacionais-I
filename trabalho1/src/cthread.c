@@ -95,11 +95,13 @@ void *cscheduler()
   // printf("#scheduler em ação\n\n\n");
   if(running_thread)
   {
-    running_thread->state = PROCST_TERMINO;
-    cunjoin_thread(running_thread->tid);
+    TCB_t *finalize;
+    finalize = running_thread;
+    finalize->state = PROCST_TERMINO;
+    cunjoin_thread(finalize->tid);
 
-    free(running_thread->context.uc_stack.ss_sp);
-    free(running_thread);
+    free(finalize->context.uc_stack.ss_sp);
+    free(finalize);
 
     running_thread = NULL;
   }
@@ -114,7 +116,7 @@ void *cscheduler()
   if(FirstFila2(&filaAptos) != 0)
   {
     printf("fila aptos está vazia, segue execução\n\n");
-    return;
+    return 0;
   }
 
   // PNODE2 aux_it = filaAptos.it;
