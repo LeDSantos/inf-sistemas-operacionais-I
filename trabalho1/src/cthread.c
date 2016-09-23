@@ -111,7 +111,7 @@ void *cscheduler()
   int diff = 255;
   int lowest_tid = thread_count;
 
-  printf("#scheduler:\nnum sorteado: %d\nnum threads criadas: %d\n\n", draw, lowest_tid);
+  printf("#scheduler:\nnum sorteado: %d\n\n", draw);
 
   if(FirstFila2(&filaAptos) != 0)
   {
@@ -171,7 +171,7 @@ void *cscheduler()
       }
     }
   }
-  printf("vencedor:\ntid: %d\nticket: %d\ndiff: %d\n\n", lucky->tid, lucky->ticket, diff);
+  printf("vencedor:\ntid: %d\nticket: %d\ndiff: %d\n\n", lucky->tid, lucky->ticket, min_diff);
   // filaAptos.it = aux_it;
   // DeleteAtIteratorFila2(&filaAptos);
 
@@ -193,10 +193,6 @@ void *cscheduler()
 void init_cthreads()
 {
   // printf("#init_cthreads em ação\n\n\n");
-  char *aaa;
-  int bbb;
-  cidentify(aaa, bbb);
-
   if(CreateFila2(&filaAptos) != 0)
   {
     printf("falha ao criar fila aptos\n");
@@ -258,10 +254,10 @@ int ccreate (void* (*start)(void*), void *arg)
 
   if(AppendFila2(&filaAptos, (void *) cthread) != 0)
   {
-    printf("#ccreate: falha ao criar tid %d\n", cthread->tid);
+    printf("#ccreate: falha ao criar tid %d\n\n", cthread->tid);
     return -1;
   }
-  printf("#ccreate:\nthread tid %d\nestado: %d\nticket: %d\n\n", cthread->tid, cthread->state, cthread->ticket);
+  printf("#ccreate:\nthread tid %d\nticket: %d\n\n", cthread->tid, cthread->ticket);
   return cthread->tid;
 }
 
@@ -291,6 +287,7 @@ int cyield(void)
   {
     return -1;
   }
+
   swapcontext(&thread->context, &scheduler);
   return 0;
 }
@@ -356,10 +353,10 @@ int csem_init(csem_t *sem, int count)
 
   if(CreateFila2(sem->fila))
   {
-    printf("falha ao criar semáforo\n");
+    printf("falha ao criar semaforo\n");
     return -1;
   }
-  printf("semáforo criado; recursos: %d\n", sem->count);
+  printf("semaforo criado; recursos: %d\n", sem->count);
   return 0;
 }
 
@@ -377,7 +374,10 @@ int cwait(csem_t *sem)
   if(sem->fila == NULL)
   {
     sem->fila = malloc(sizeof(FILA2));
-    CreateFila2(sem->fila);
+    if(CreateFila2(sem->fila) != 0 )
+    {
+      printf("falha ao criar semaforo\n");
+    }
   }
 
   sem->count--;
@@ -386,7 +386,8 @@ int cwait(csem_t *sem)
   {
     printf("nenhum recurso disponível, entrou na fila\n recursos: %d\n", sem->count);
 
-    TCB_t *thread = running_thread;
+    TCB_t *thread;
+    thread = running_thread;
     thread->state = PROCST_BLOQ;
 
     AppendFila2(sem->fila, (void *) thread);
@@ -415,13 +416,13 @@ int csignal(csem_t *sem)
 
   if(sem->fila == NULL)
   {
-    printf("semáforo não inicializado ou usou signal antes de wait\n");
+    printf("semaforo não inicializado ou usou signal antes de wait\n");
     return -1;
   }
 
-  if(FirstFila2(sem->fila))
+  if(FirstFila2(sem->fila) != 0)
   {
-    printf("semáforo vazio, liberando\n");
+    printf("semaforo vazio, liberando\n");
     free(sem->fila);
     sem->fila = NULL;
     return 0;
@@ -429,31 +430,32 @@ int csignal(csem_t *sem)
 
   sem->count++;
 
-  if(sem->count > 0)
-  {
-    if(FirstFila2(sem->fila))
-    {
-      printf("erro firstfila csignal ln.407\n");
-    }
-
-    TCB_t *thread = (TCB_t *)GetAtIteratorFila2(sem->fila);
+  // if(sem->count > 0)
+  // {
+    TCB_t *thread;
+    thread = (TCB_t *)GetAtIteratorFila2(sem->fila);
     thread->state = PROCST_APTO;
     DeleteAtIteratorFila2(sem->fila);
 
     if(remove_thread(thread->tid, &filaBloqueados) != 0)
     {
-      printf("falha ao remover thread // cthread ln.416\n");
+      printf("#csignal: falha ao remover thread da fila bloq\n");
       return -1;
     }
 
-    AppendFila2(&filaAptos, (void *) thread);
+    if(AppendFila2(&filaAptos, (void *) thread) != 0)
+    {
+
+      printf("#csignal: falha ao colocar thread da fila aptos\n");
+    }
 
     printf("recursos: %d\n", sem->count);
-    return 0;
-  }
 
-  printf("recursos: %d\n", sem->count);
-  return 0;
+    return 0;
+  // }
+
+  // printf("recursos: %d\n", sem->count);
+  // return 0;
 }
 
 /*

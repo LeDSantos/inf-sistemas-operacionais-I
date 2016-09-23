@@ -1,14 +1,13 @@
-
 #
-# Makefile ESQUELETO
+# cthread.c
+# Biblioteca cthreads
 #
-# OBRIGATÓRIO ter uma regra "all" para geração da biblioteca e de uma
-# regra "clean" para remover todos os objetos gerados.
+# Instituto de Informática - UFRGS
+# Sistemas Operacionais I N 2016/2
+# Prof. Alexandre Carissimi
 #
-# NECESSARIO adaptar este esqueleto de makefile para suas necessidades.
-#  1. Cuidado com a regra "clean" para não apagar o "fila2.o"
-#
-# OBSERVAR que as variáveis de ambiente consideram que o Makefile está no diretótio "cthread"
+# Gustavo Madeira Santana
+# Cristiano Salla Lunardi
 #
 
 LIB=./lib/

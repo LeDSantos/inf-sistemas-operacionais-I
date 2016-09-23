@@ -33,16 +33,18 @@ void hello(){
 	cwait(&sem);
 	printf("hello\n");
 	printf("sou a thread hello com tid: %d\n", thello);
+	csignal(&sem);
 }
 
 void space(){
+	cwait(&sem);
 	printf("_\n");
 	printf("sou a thread space com tid: %d\n", tspace);
+	csignal(&sem);
 }
 
 void world(){
 	printf("world\n");
-	cyield();
 	printf("sou a thread world com tid: %d\n", tworld);
 }
 
@@ -53,34 +55,53 @@ void excl(){
 
 int main()
 {
-	printf("criando uma thread para a funcao hello\n");
+	printf("#main: criando uma thread para a funcao hello\n");
 	thello = ccreate((void *)hello, NULL);
 
-	printf("criando uma thread para a funcao space\n");
+	printf("#main: criando uma thread para a funcao space\n");
 	tspace = ccreate((void *)space, (void *)NULL);
 
-	printf("criando uma thread para a funcao world\n");
+	printf("#main: criando uma thread para a funcao world\n");
 	tworld = ccreate((void *)world, (void *)NULL);
 
-	printf("criando uma thread para a funcao excl\n");
+	printf("#main: criando uma thread para a funcao excl\n");
 	texcl = ccreate((void *)excl, (void *)NULL);
 
-	printf("criando semáforo\n");
+	printf("#main: criando semaforo\n");
 	csem_init(&sem, 1);
 
-	printf("executando cwait main\n");
+	printf("#main: executando cwait\n");
 	cwait(&sem);
 
-	printf("cjoin main com hello\n");
-	cjoin(thello);
-
-	printf("csignal na main\n");
-	csignal(&sem);
-
-	printf("yield na main\n");
+	// printf("#main: cjoin com hello\n");
+	// cjoin(thello);
+	printf("#main: yield\n");
+	cyield();
+	cyield();
+	cyield();
+	cyield();
 	cyield();
 
-	printf("main terminando\n");
+	printf("#main: csignal\n");
+	csignal(&sem);
+
+
+	printf("#main: yield\n");
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+
+
+	// cjoin(thello);
+
+	printf("#main: terminando\n");
 
 	return 0;
 }
