@@ -20,9 +20,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
-
-
 // indicador de inicialização da biblioteca
 int has_init_cthreads = 0;
 int thread_count = 1;
@@ -41,7 +38,6 @@ TCB_t *running_thread;
 
 // fila do join
 FILA2 filaJCB;
-
 
 /*
 ** verifica se existe thread para dar unjoin
@@ -96,7 +92,7 @@ void cunjoin_thread(int tid)
 */
 void *cscheduler()
 {
-  printf("#scheduler em ação\n\n\n");
+  // printf("#scheduler em ação\n\n\n");
   if(running_thread)
   {
     running_thread->state = PROCST_TERMINO;
@@ -194,7 +190,7 @@ void *cscheduler()
 */
 void init_cthreads()
 {
-  printf("#init_cthreads em ação\n\n\n");
+  // printf("#init_cthreads em ação\n\n\n");
   char *aaa;
   int bbb;
   cidentify(aaa, bbb);
@@ -306,6 +302,12 @@ int cjoin(int tid)
   if(has_init_cthreads == 0)
   {
     init_cthreads();
+  }
+
+  if(tid == 0)
+  {
+    // printf("não pode dar join na main\n");
+    return -1;
   }
 
   if(find_thread(tid, &filaAptos) != 0)

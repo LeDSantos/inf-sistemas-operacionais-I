@@ -28,23 +28,26 @@ void excl();
 int thello, tspace, tworld, texcl;
 
 void hello(){
-	cjoin(world);
-	printf("hello");
+	cjoin(tworld);
+	printf("hello\n");
 	printf("sou a thread hello com tid: %d\n", thello);
 }
 
 void space(){
-	printf(" ");
+	cjoin(tworld);
+	printf("_\n");
 	printf("sou a thread space com tid: %d\n", tspace);
 }
 
 void world(){
-	cyield();
+	cjoin(thello);
 	printf("world\n");
+	cyield();
 	printf("sou a thread world com tid: %d\n", tworld);
 }
 
 void excl(){
+	cjoin(texcl);
 	printf("!\n");
 	printf("sou a thread excl com tid: %d\n", texcl);
 }
@@ -52,7 +55,7 @@ void excl(){
 int main()
 {
 	printf("criando uma thread para a funcao hello\n");
-	thello = ccreate((void *)hello, NULL);
+	thello = (int)ccreate((void *)hello, NULL);
 
 	printf("criando uma thread para a funcao space\n");
 	tspace = ccreate((void *)space, (void *)NULL);
