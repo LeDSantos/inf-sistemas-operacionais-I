@@ -11,43 +11,83 @@
 ** Cristiano Salla Lunardi
 **
 */
+#include <ucontext.h>
+#include <support.h>
+
+#include <cthread.h>
+#include <cdata.h>
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
-#include <ucontext.h>
 
-#include <cthread.h>
+
+
 
 // indicador de inicialização da biblioteca
-int has_init_cthreads = FALSE;
+int has_init_cthreads = 0;
 int thread_count = 1;
 
 // toda thread deve passar controle para o scheduler ao sair de execução
 ucontext_t scheduler;
+char ss_scheduler[SIGSTKSZ];
+
+// malloc pra main estava dando segfault
+TCB_t main_thread;
 
 // estados apto, bloqueado e executando
-TCB_t *running_thread;
 FILA2 filaAptos;
 FILA2 filaBloqueados;
+TCB_t *running_thread;
 
 // fila do join
 FILA2 filaJCB;
+
 
 /*
 ** verifica se existe thread para dar unjoin
 */
 void cunjoin_thread(int tid)
 {
-  JCB_t *join_thread;
+  JCB_t *jcb;
   TCB_t *thread;
 
-  if(!get_jcb(tid, &join_thread, &filaJCB))
+  FirstFila2(&filaJCB);
+  while(NextFila2(&filaJCB) == 0)
   {
-    thread = join_thread->thread;
-    AppendFila2(&filaAptos, (void *) thread);
-    DeleteAtIteratorFila2(&filaBloqueados);
-    setcontext(&scheduler);
+    if(filaJCB.it == 0)
+    {
+      break;
+    }
+
+    jcb = (JCB_t *)GetAtIteratorFila2(&filaJCB);
+    if(jcb->tid == tid)
+    {
+      break;
+    }
+  }
+
+  FirstFila2(&filaBloqueados);
+  while(NextFila2(&filaBloqueados) == 0)
+  {
+    if(filaBloqueados.it == 0)
+    {
+      break;
+    }
+
+    thread = (TCB_t *)GetAtIteratorFila2(&filaBloqueados);
+    if(jcb->thread->tid == thread->tid)
+    {
+      DeleteAtIteratorFila2(&filaJCB);
+      remove_thread(thread->tid, &filaBloqueados);
+
+      free(jcb);
+
+      thread->state = PROCST_APTO;
+      AppendFila2(&filaAptos, (void *) thread);
+
+      break;
+    }
+
   }
 }
 
@@ -56,32 +96,44 @@ void cunjoin_thread(int tid)
 */
 void *cscheduler()
 {
-  if(running_thread->state == PROCST_APTO)
-  {
-    AppendFila2(&filaAptos, (void *) running_thread);
-  }
-  else if(running_thread->state == PROCST_BLOQ)
-  {
-   AppendFila2(&filaBloqueados, (void *) running_thread);
-  }
-  else
+  printf("#scheduler em ação\n\n\n");
+  if(running_thread)
   {
     running_thread->state = PROCST_TERMINO;
     cunjoin_thread(running_thread->tid);
+
+    free(running_thread->context.uc_stack.ss_sp);
     free(running_thread);
+
+    running_thread = NULL;
   }
 
-  running_thread = 0;
-
-  int draw = Random2();
+  int draw = ticket_gen();
+  int min_diff = 255;
   int diff = 255;
   int lowest_tid = thread_count;
 
-  FirstFila2(&filaAptos);
-  PNODE2 aux_it = filaAptos.it;
+  printf("#scheduler:\nnum sorteado: %d\nnum threads criadas: %d\n\n", draw, lowest_tid);
 
-  TCB_t *lucky = GetAtIteratorFila2(&filaAptos);
-  TCB_t *aux_thread = GetAtIteratorFila2(&filaAptos);
+  if(FirstFila2(&filaAptos) != 0)
+  {
+    printf("Fila aptos está vazia\n\n");
+    return;
+  }
+
+  // PNODE2 aux_it = filaAptos.it;
+
+  TCB_t *lucky;
+  TCB_t *aux_thread;
+
+  aux_thread = (TCB_t *)GetAtIteratorFila2(&filaAptos);
+
+  diff = abs(draw - aux_thread->ticket);
+  min_diff = diff;
+  lowest_tid = aux_thread->tid;
+  lucky = aux_thread;
+  printf("procurando ganhador:\ntid: %d\nticket: %d\ndiff: %d\n\n", aux_thread->tid, aux_thread->ticket, diff);
+  printf("atual ganhador, tid: %d\n\n", lucky->tid);
 
   while(NextFila2(&filaAptos) == 0)
   {
@@ -89,42 +141,50 @@ void *cscheduler()
     {
       break;
     }
-
-    aux_thread = GetAtIteratorFila2(&filaAptos);
-    if(aux_thread = NULL) printf("Erro em GetAtIteratorFila2, cthread.c ln 78\n");
-
+    aux_thread = (TCB_t *)GetAtIteratorFila2(&filaAptos);
     diff = abs(draw - aux_thread->ticket);
+    printf("procurando ganhador:\ntid: %d\nticket: %d\ndiff: %d\n\n", aux_thread->tid, aux_thread->ticket, diff);
 
     if(aux_thread->ticket == draw && aux_thread->tid < lowest_tid)
     {
       lucky = aux_thread;
       lowest_tid = lucky->tid;
+      // aux_it = filaAptos.it;
+      min_diff = diff;
+      printf("atual ganhador, tid: %d\n\n", lucky->tid);
     }
-    else if(aux_thread->ticket <= diff)
+    else if(diff <= min_diff)
     {
-      if(aux_thread->ticket == diff && aux_thread->tid < lowest_tid)
+      if(diff == min_diff && aux_thread->tid < lowest_tid)
       {
         lucky = aux_thread;
         lowest_tid = lucky->tid;
+        // aux_it = filaAptos.it;
+        min_diff = diff;
+        printf("atual ganhador, tid: %d\n\n", lucky->tid);
       }
-      else if(aux_thread->ticket < diff)
+      else if(diff < min_diff)
       {
         lucky = aux_thread;
         lowest_tid = lucky->tid;
+        // aux_it = filaAptos.it;
+        min_diff = diff;
+        printf("atual ganhador, tid: %d\n\n", lucky->tid);
       }
     }
   }
-
-  filaAptos.it = aux_it;
-  DeleteAtIteratorFila2(&filaAptos);
+  printf("vencedor:\ntid: %d\nticket: %d\ndiff: %d\n\n", lucky->tid, lucky->ticket, diff);
+  // filaAptos.it = aux_it;
+  // DeleteAtIteratorFila2(&filaAptos);
 
 /*
 ** dispatcher
 ** coloca thread sorteada em execução
 */
-
   running_thread = lucky;
+  remove_thread(running_thread->tid, &filaAptos);
   lucky->state = PROCST_EXEC;
+
   setcontext(&lucky->context);
 }
 
@@ -134,31 +194,44 @@ void *cscheduler()
 */
 void init_cthreads()
 {
-  CreateFila2(&filaAptos);
-  CreateFila2(&filaBloqueados);
-  CreateFila2(&filaJCB);
+  printf("#init_cthreads em ação\n\n\n");
+  char *aaa;
+  int bbb;
+  cidentify(aaa, bbb);
+
+  if(CreateFila2(&filaAptos) != 0)
+  {
+    printf("falha ao criar fila aptos\n");
+  }
+  if(CreateFila2(&filaBloqueados) != 0)
+  {
+    printf("falha ao criar fila bloqueados\n");
+  }
+  if(CreateFila2(&filaJCB) != 0)
+  {
+    printf("falha ao criar fila join\n");
+  }
 
   // inicialização do scheduler
   getcontext(&scheduler);
-  scheduler.uc_link = 0; //scheduler volta para main
-  scheduler.uc_stack.ss_sp = malloc(SIGSTKSZ);
+  scheduler.uc_link = &main_thread.context; //scheduler volta para main
+  scheduler.uc_stack.ss_sp = ss_scheduler;
   scheduler.uc_stack.ss_size = SIGSTKSZ;
   makecontext(&scheduler, (void (*)(void))cscheduler, 0);
 
-  // criação de thread para a main
-  TCB_t *main_thread = malloc(sizeof(TCB_t));
-  main_thread->tid = 0; // id da main tem que ser 0
-  main_thread->state = PROCST_EXEC;
-  main_thread->ticket = Random2();
-  getcontext(&main_thread->context);
+  // inicializa main
+  main_thread.tid = 0; // id da main tem que ser 0
+  main_thread.state = PROCST_EXEC;
+  main_thread.ticket = ticket_gen();
+  getcontext(&main_thread.context);
 
   // precisa malloc pra stack da main?
   // main_thread->context.uc_stack.ss_sp = malloc(SIGSTKSZ);
   // main_thread->context.uc_stack.ss_size = SIGSTKSZ;
 
-  running_thread = main_thread;
+  running_thread = &main_thread;
 
-  has_init_cthreads = TRUE;
+  has_init_cthreads = 1;
 }
 
 /*
@@ -166,18 +239,16 @@ void init_cthreads()
 */
 int ccreate (void* (*start)(void*), void *arg)
 {
-  if(has_init_cthreads == FALSE)
+  if(has_init_cthreads == 0)
   {
     init_cthreads();
   }
-
   TCB_t *cthread = malloc(sizeof(TCB_t));
   cthread->tid = thread_count; thread_count++;
   cthread->state = PROCST_CRIACAO;
-  cthread->ticket = Random2();
+  cthread->ticket = ticket_gen();
   // cthread->context = malloc(sizeof(ucontext_t));
-  getcontext(&(cthread->context));
-
+  getcontext(&cthread->context);
   cthread->context.uc_link = &scheduler;
   cthread->context.uc_stack.ss_sp = malloc(SIGSTKSZ);
   cthread->context.uc_stack.ss_size = SIGSTKSZ;
@@ -187,10 +258,12 @@ int ccreate (void* (*start)(void*), void *arg)
 
   cthread->state = PROCST_APTO;
 
-  if(AppendFila2(&filaAptos, (void *) cthread))
+  if(AppendFila2(&filaAptos, (void *) cthread) != 0)
   {
+    printf("#ccreate: falha ao criar tid %d\n", cthread->tid);
     return -1;
   }
+  printf("#ccreate:\nthread tid %d\nestado: %d\nticket: %d\n\n", cthread->tid, cthread->state, cthread->ticket);
   return cthread->tid;
 }
 
@@ -199,7 +272,7 @@ int ccreate (void* (*start)(void*), void *arg)
 */
 int cyield(void)
 {
-  if(has_init_cthreads == FALSE)
+  if(has_init_cthreads == 0)
   {
     init_cthreads();
   }
@@ -211,8 +284,7 @@ int cyield(void)
     swapcontext(&running_thread->context, &scheduler);
     return 0;
   }
-  else
-    return -1;
+ return -1;
 }
 
 /*
@@ -221,24 +293,109 @@ int cyield(void)
 */
 int cjoin(int tid)
 {
-  if(find_thread(tid, &filaAptos) || find_thread(tid, &filaBloqueados))
+  if(has_init_cthreads == 0)
   {
-    printf("thread não existe ou já terminou ou não está na fila de aptos\n");
-    return -1;
+    init_cthreads();
   }
 
-  TCB_t *thread = running_thread;
-  JCB_t *join_thread = malloc(sizeof(JCB_t));
+  if(find_thread(tid, &filaAptos) != 0)
+  {
+    if(find_thread(tid, &filaBloqueados) != 0){
+    printf("#cjoin: tid %d não existe ou já terminou\n\n", tid);
+    return -1;
+    }
+  }
 
-  join_thread->tid = tid;
-  join_thread->thread = thread;
+  // printf("#cjoin: vou procurar pela tid %d\n", tid);
 
-  AppendFila2(&filaBloqueados, (void*) join_thread);
+  // int found = 0;
+  TCB_t *thread;
+
+  // if(FirstFila2(&filaAptos) != 0)
+  // {
+  //   printf("#find_thread: FirstFila2: fila aptos vazia ou erro\n\n");
+  //   return -1;
+  // }
+
+  // thread = (TCB_t *)GetAtIteratorFila2(&filaAptos);
+
+  // printf("tid apontada: %d\n\n", thread->tid);
+  // if(thread->tid == tid)
+  // {
+  //   found = 1;
+  //   printf("encontrou na fila aptos a thread com tid: %d\n\n", thread->tid);
+  // }
+  // if(found == 0)
+  // {
+  //     while(NextFila2(&filaAptos) == 0)
+  //     {
+  //       if(filaAptos.it == 0)
+  //       {
+  //         int found = 0;
+  //         break;
+  //       }
+  //       else
+  //       {
+  //         thread = (TCB_t *)GetAtIteratorFila2(&filaAptos);
+  //         printf("procurando em aptos tid: %d\n\n", thread->tid);
+  //         if(thread->tid == tid)
+  //         {
+  //           int found = 1;
+  //           printf("encontrou na fila aptos a thread com tid: %d\n\n", thread->tid);
+  //           break;
+  //         }
+  //       }
+  //     }
+
+  //     if(found == 0){
+  //             if(FirstFila2(&filaBloqueados) != 0)
+  //             {
+  //               printf("#find_thread: FirstFila2: fila bloq vazia ou erro\n\n");
+  //               return -1;
+  //             }
+
+  //             while(NextFila2(&filaBloqueados) == 0)
+  //             {
+  //               if(filaBloqueados.it == 0)
+  //               {
+  //                 int found = 0;
+  //                 break;
+  //               }
+  //               else
+  //               {
+  //                 thread = (TCB_t *)GetAtIteratorFila2(&filaBloqueados);
+  //                 if(thread->tid == tid)
+  //                 {
+  //                   int found = 1;
+  //                   printf("encontrou na fila bloq a thread com tid: %d\n\n", thread->tid);
+  //                   break;
+  //                 }
+  //               }
+  //             }
+  //     }
+  // }
+  // if(found == 0)
+  // {
+  //   printf("AEAEOOAEA\n");
+  //   return -1;
+  // }
+
+  thread = running_thread;
+
+  JCB_t *jcb = malloc(sizeof(JCB_t));
+  jcb->tid = tid;
+  printf("#cjoin: jcb->tid: %d\n", jcb->tid);
+  jcb->thread = thread;
 
   thread->state = PROCST_BLOQ;
+  if(AppendFila2(&filaBloqueados, (void*) jcb) != 0)
+  {
+    printf("#cjoin: erro ao inserir na fila bloqueados\n\n");
+  }
+
+  running_thread = NULL;
 
   swapcontext(&thread->context, &scheduler);
-
   return 0;
 }
 
@@ -248,21 +405,21 @@ int cjoin(int tid)
 */
 int csem_init(csem_t *sem, int count)
 {
-  if(has_init_cthreads == FALSE)
+  if(has_init_cthreads == 0)
   {
     init_cthreads();
   }
 
   sem->count = count;
-  sem->fila = malloc(sizeof(filaAptos));
+  sem->fila = malloc(sizeof(FILA2));
 
   if(CreateFila2(sem->fila))
   {
     printf("falha ao criar semáforo\n");
     return -1;
   }
-    printf("semáforo criado; recursos: %d\n", sem->count);
-    return 0;
+  printf("semáforo criado; recursos: %d\n", sem->count);
+  return 0;
 }
 
 /*
@@ -271,28 +428,36 @@ int csem_init(csem_t *sem, int count)
 */
 int cwait(csem_t *sem)
 {
-  if(has_init_cthreads == FALSE)
+  if(has_init_cthreads == 0)
   {
     init_cthreads();
   }
 
-  if(FirstFila2(&(sem->fila)))
+  if(sem->fila == NULL)
   {
-    printf("semáforo não foi inicializado corretamente\n");
-    return -1;
+    sem->fila = malloc(sizeof(FILA2));
+    CreateFila2(sem->fila);
   }
 
   sem->count--;
 
   if(sem->count < 0)
   {
-    printf("nenhum recurso disponível, entrou na fila\n");
-    running_thread->state = PROCST_BLOQ;
-    AppendFila2(&(sem->fila), (void *) running_thread);
-    swapcontext(&running_thread->context, &scheduler);
+    printf("nenhum recurso disponível, entrou na fila\n recursos: %d\n", sem->count);
+
+    TCB_t *thread = running_thread;
+    thread->state = PROCST_BLOQ;
+
+    AppendFila2(sem->fila, (void *) thread);
+    AppendFila2(&filaBloqueados, (void *) thread);
+
+    running_thread = NULL;
+
+    swapcontext(&thread->context, &scheduler);
     return 0;
   }
 
+  printf("recursos: %d\n", sem->count);
   return 0;
 }
 
@@ -302,31 +467,51 @@ int cwait(csem_t *sem)
 */
 int csignal(csem_t *sem)
 {
-  if(has_init_cthreads == FALSE)
+  if(has_init_cthreads == 0)
   {
     init_cthreads();
   }
 
-  if(FirstFila2(&(sem->fila)))
+  if(sem->fila == NULL)
   {
-    printf("semáforo não foi inicializado corretamente\n");
+    printf("semáforo não inicializado ou usou signal antes de wait\n");
     return -1;
+  }
+
+  if(FirstFila2(sem->fila))
+  {
+    printf("semáforo vazio, liberando\n");
+    free(sem->fila);
+    sem->fila = NULL;
+    return 0;
   }
 
   sem->count++;
 
   if(sem->count > 0)
   {
-    FirstFila2(&(sem->fila));
+    if(FirstFila2(sem->fila))
+    {
+      printf("erro firstfila csignal ln.407\n");
+    }
 
-    TCB_t *thread = GetAtIteratorFila2(&(sem->fila));
+    TCB_t *thread = (TCB_t *)GetAtIteratorFila2(sem->fila);
     thread->state = PROCST_APTO;
+    DeleteAtIteratorFila2(sem->fila);
+
+    if(remove_thread(thread->tid, &filaBloqueados) != 0)
+    {
+      printf("falha ao remover thread // cthread ln.416\n");
+      return -1;
+    }
 
     AppendFila2(&filaAptos, (void *) thread);
 
+    printf("recursos: %d\n", sem->count);
     return 0;
   }
 
+  printf("recursos: %d\n", sem->count);
   return 0;
 }
 
@@ -340,7 +525,8 @@ int cidentify (char *name, int size)
   // strcpy(grupo, "Cristiano Salla Lunardi - 240508\nGustavo Madeira Santana - 252853");
   // strcpy(aux, grupo);
 
-  printf("Cristiano Salla Lunardi - 240508\nGustavo Madeira Santana - 252853\n");
+  // professor falou que podia ser apenas um printf
+  printf("Cristiano Salla Lunardi - 240508\nGustavo Madeira Santana - 252853\n\n");
 
   return 0;
 }

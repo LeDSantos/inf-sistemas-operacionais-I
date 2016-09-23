@@ -6,13 +6,8 @@
  *
  * VERSÃO 1 - 04/04/2016
 */
-
-
 #ifndef __cthread__
 #define __cthread__
-
-#include <cdata.h>
-#include <support.h>
 
 typedef struct s_sem {
 	int	count;	// indica se recurso está ocupado ou não (livre > 0, ocupado = 0)

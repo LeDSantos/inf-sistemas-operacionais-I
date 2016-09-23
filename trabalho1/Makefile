@@ -20,15 +20,15 @@ TST=./testes/
 DIRS=$(LIB) $(INC) $(BIN) $(SRC) $(TST)
 
 CC=gcc
-CCFLAGS=-c -m32 -Wall -I$(INC)
+CCFLAGS=-c -lm -m32 -Wall -I$(INC)
 
 all: teste
 
 teste: cdata.o cthread.o teste1.o
-	$(CC) teste1.o cdata.o cthread.o $(BIN)support.o -o teste1
+	$(CC) teste2.o cdata.o cthread.o $(BIN)support.o -o teste1
 
 teste1.o:
-	$(CC) $(CCFLAGS) $(TST)teste1.c
+	$(CC) $(CCFLAGS) $(TST)teste2.c
 
 cdata.o:
 	$(CC) $(CCFLAGS) $(SRC)cdata.c

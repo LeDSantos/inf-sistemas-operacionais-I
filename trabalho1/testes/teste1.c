@@ -45,6 +45,12 @@ void excl(){
 
 int main()
 {
+
+	char a = 'a';
+	int x = 2;
+
+	cidentify(a, x);
+
 	printf("criando uma thread para a funcao hello\n");
 	thello = ccreate((void *)hello, NULL);
 	printf("sou a thread hello com tid: %d\n", thello);
@@ -61,21 +67,22 @@ int main()
 	texcl = ccreate((void *)excl, (void *)NULL);
 	printf("sou a thread excl com tid: %d\n", texcl);
 
-	printf("yield 1 na main\n");
-	cy = cyield();
-	printf("cyield: %d\n", cy);
+	// printf("yield 1 na main\n");
+	// cy = cyield();
+	// printf("cyield: %d\n", cy);
 
-	printf("yield 2 na main\n");
-	cy = cyield();
-	printf("cyield: %d\n", cy);
+	// printf("yield 2 na main\n");
+	// cy = cyield();
+	// printf("cyield: %d\n", cy);
 
-	printf("yield 3 na main\n");
-	cy = cyield();
-	printf("cyield: %d\n", cy);
+	// printf("yield 3 na main\n");
+	// cy = cyield();
+	// printf("cyield: %d\n", cy);
 
-	printf("yield 4 na main\n");
-	cy = cyield();
-	printf("cyield: %d\n", cy);
+	// printf("yield 4 na main\n");
+	// cy = cyield();
+	// printf("cyield: %d\n", cy);
 
+	cjoin(1);
 	return 0;
 }

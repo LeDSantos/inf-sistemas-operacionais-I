@@ -12,16 +12,77 @@
 **
 */
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <support.h>
+#include <ucontext.h>
 
+#include <cthread.h>
 #include <cdata.h>
 
+#include <stdlib.h>
+#include <stdio.h>
+
+
+unsigned int ticket_gen()
+{
+  unsigned int random = Random2();
+  while(random >= 255)
+  {
+    random = random/8;
+  }
+
+  return random;
+}
+
 int find_thread(int tid, PFILA2 fila)
+{
+
+  TCB_t *thread;
+  if(FirstFila2(fila) != 0)
+  {
+    printf("#find_thread: FirstFila2: fila vazia ou erro\n\n");
+    return -1;
+  }
+
+  thread = (TCB_t *)GetAtIteratorFila2(fila);
+  if(thread->tid == tid)
+  {
+    printf("thread encontrada! tid: %d\n\n", tid);
+    return 0;
+  }
+
+  while(NextFila2(fila) == 0)
+  {
+    if(fila->it == 0)
+    {
+      break;
+    }
+    else
+    {
+      thread = (TCB_t *)GetAtIteratorFila2(fila);
+      if(thread->tid == tid)
+      {
+        printf("thread encontrada! tid: %d\n\n", tid);
+        return 0;
+      }
+    }
+  }
+
+  return -1;
+}
+
+int remove_thread(int tid, PFILA2 fila)
 {
   TCB_t *thread;
   FirstFila2(fila);
 
+  thread = (TCB_t *)GetAtIteratorFila2(fila);
+
+  if(thread->tid == tid)
+  {
+    DeleteAtIteratorFila2(fila);
+    return 0;
+  }
+
   while(NextFila2(fila) == 0)
   {
     if(fila->it == 0)
@@ -29,54 +90,11 @@ int find_thread(int tid, PFILA2 fila)
       break;
     }
 
-    thread = (TCB_t*)GetAtIteratorFila2(fila);
+    thread = (TCB_t *)GetAtIteratorFila2(fila);
 
     if(thread->tid == tid)
     {
-      return 0;
-    }
-  }
-  return -1;
-}
-
-int get_thread(int tid, TCB_t *thread, PFILA2 fila)
-{
-  TCB_t *cthread = thread;
-  FirstFila2(fila);
-
-  while(NextFila2(fila) == 0)
-  {
-    if(fila->it == 0)
-    {
-      break;
-    }
-
-    cthread = (TCB_t*)GetAtIteratorFila2(fila);
-
-    if(cthread->tid == tid)
-    {
-      return 0;
-    }
-  }
-  return -1;
-}
-
-int get_jcb(int tid, JCB_t *thread, PFILA2 fila)
-{
-  JCB_t *cthread = thread;
-  FirstFila2(fila);
-
-  while(NextFila2(fila) == 0)
-  {
-    if(fila->it == 0)
-    {
-      break;
-    }
-
-    cthread = (TCB_t*)GetAtIteratorFila2(fila);
-
-    if(cthread->tid == tid)
-    {
+      DeleteAtIteratorFila2(fila);
       return 0;
     }
   }

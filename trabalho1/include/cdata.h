@@ -16,7 +16,6 @@
 #define __cdata__
 
 #include <support.h>
-#include <cthread.h>
 #include <ucontext.h>
 
 #define	PROCST_CRIACAO	0
@@ -24,9 +23,6 @@
 #define	PROCST_EXEC	2
 #define	PROCST_BLOQ	3
 #define	PROCST_TERMINO	4
-
-#define TRUE 1
-#define FALSE 0
 
 /* NÃO ALTERAR ESSA struct */
 typedef struct s_TCB {
@@ -42,8 +38,8 @@ typedef struct s_JCB {
     TCB_t *thread; // thread bloqueada
 } JCB_t;
 
+unsigned int ticket_gen();
 int find_thread(int tid, PFILA2 fila);
-int get_thread(int tid, TCB_t *thread, PFILA2 fila);
-int get_jcb(int tid, JCB_t *thread, PFILA2 fila);
+int remove_thread(int tid, PFILA2 fila);
 
 #endif
