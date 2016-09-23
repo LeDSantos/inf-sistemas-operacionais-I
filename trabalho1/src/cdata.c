@@ -39,14 +39,14 @@ int find_thread(int tid, PFILA2 fila)
   TCB_t *thread;
   if(FirstFila2(fila) != 0)
   {
-    printf("#find_thread: FirstFila2: fila vazia ou erro\n\n");
+    // printf("#find_thread: FirstFila2: fila vazia ou erro\n\n");
     return -1;
   }
 
   thread = (TCB_t *)GetAtIteratorFila2(fila);
   if(thread->tid == tid)
   {
-    printf("thread encontrada! tid: %d\n\n", tid);
+    // printf("thread encontrada! tid: %d\n\n", tid);
     return 0;
   }
 
@@ -61,7 +61,7 @@ int find_thread(int tid, PFILA2 fila)
       thread = (TCB_t *)GetAtIteratorFila2(fila);
       if(thread->tid == tid)
       {
-        printf("thread encontrada! tid: %d\n\n", tid);
+        // printf("thread encontrada! tid: %d\n\n", tid);
         return 0;
       }
     }

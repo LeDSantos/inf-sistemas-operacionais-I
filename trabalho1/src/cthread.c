@@ -117,7 +117,7 @@ void *cscheduler()
 
   if(FirstFila2(&filaAptos) != 0)
   {
-    printf("Fila aptos está vazia\n\n");
+    printf("fila aptos está vazia, segue execução\n\n");
     return;
   }
 
@@ -132,8 +132,8 @@ void *cscheduler()
   min_diff = diff;
   lowest_tid = aux_thread->tid;
   lucky = aux_thread;
-  printf("procurando ganhador:\ntid: %d\nticket: %d\ndiff: %d\n\n", aux_thread->tid, aux_thread->ticket, diff);
-  printf("atual ganhador, tid: %d\n\n", lucky->tid);
+  // printf("procurando ganhador:\ntid: %d\nticket: %d\ndiff: %d\n\n", aux_thread->tid, aux_thread->ticket, diff);
+  // printf("atual ganhador, tid: %d\n\n", lucky->tid);
 
   while(NextFila2(&filaAptos) == 0)
   {
@@ -143,7 +143,7 @@ void *cscheduler()
     }
     aux_thread = (TCB_t *)GetAtIteratorFila2(&filaAptos);
     diff = abs(draw - aux_thread->ticket);
-    printf("procurando ganhador:\ntid: %d\nticket: %d\ndiff: %d\n\n", aux_thread->tid, aux_thread->ticket, diff);
+    // printf("procurando ganhador:\ntid: %d\nticket: %d\ndiff: %d\n\n", aux_thread->tid, aux_thread->ticket, diff);
 
     if(aux_thread->ticket == draw && aux_thread->tid < lowest_tid)
     {
@@ -151,7 +151,7 @@ void *cscheduler()
       lowest_tid = lucky->tid;
       // aux_it = filaAptos.it;
       min_diff = diff;
-      printf("atual ganhador, tid: %d\n\n", lucky->tid);
+      // printf("atual ganhador, tid: %d\n\n", lucky->tid);
     }
     else if(diff <= min_diff)
     {
@@ -161,7 +161,7 @@ void *cscheduler()
         lowest_tid = lucky->tid;
         // aux_it = filaAptos.it;
         min_diff = diff;
-        printf("atual ganhador, tid: %d\n\n", lucky->tid);
+        // printf("atual ganhador, tid: %d\n\n", lucky->tid);
       }
       else if(diff < min_diff)
       {
@@ -169,7 +169,7 @@ void *cscheduler()
         lowest_tid = lucky->tid;
         // aux_it = filaAptos.it;
         min_diff = diff;
-        printf("atual ganhador, tid: %d\n\n", lucky->tid);
+        // printf("atual ganhador, tid: %d\n\n", lucky->tid);
       }
     }
   }
@@ -277,14 +277,24 @@ int cyield(void)
     init_cthreads();
   }
 
-  running_thread->state = PROCST_APTO;
-
-  if(running_thread->state == PROCST_APTO)
+  if(FirstFila2(&filaAptos) != 0)
   {
-    swapcontext(&running_thread->context, &scheduler);
+    printf("fila aptos vazia, segue executando\n");
     return 0;
   }
- return -1;
+
+  TCB_t *thread;
+  thread = running_thread;
+  thread->state = PROCST_APTO;
+
+  running_thread = NULL;
+
+  if(AppendFila2(&filaAptos, (void *) thread) != 0)
+  {
+    return -1;
+  }
+  swapcontext(&thread->context, &scheduler);
+  return 0;
 }
 
 /*
@@ -306,80 +316,7 @@ int cjoin(int tid)
     }
   }
 
-  // printf("#cjoin: vou procurar pela tid %d\n", tid);
-
-  // int found = 0;
   TCB_t *thread;
-
-  // if(FirstFila2(&filaAptos) != 0)
-  // {
-  //   printf("#find_thread: FirstFila2: fila aptos vazia ou erro\n\n");
-  //   return -1;
-  // }
-
-  // thread = (TCB_t *)GetAtIteratorFila2(&filaAptos);
-
-  // printf("tid apontada: %d\n\n", thread->tid);
-  // if(thread->tid == tid)
-  // {
-  //   found = 1;
-  //   printf("encontrou na fila aptos a thread com tid: %d\n\n", thread->tid);
-  // }
-  // if(found == 0)
-  // {
-  //     while(NextFila2(&filaAptos) == 0)
-  //     {
-  //       if(filaAptos.it == 0)
-  //       {
-  //         int found = 0;
-  //         break;
-  //       }
-  //       else
-  //       {
-  //         thread = (TCB_t *)GetAtIteratorFila2(&filaAptos);
-  //         printf("procurando em aptos tid: %d\n\n", thread->tid);
-  //         if(thread->tid == tid)
-  //         {
-  //           int found = 1;
-  //           printf("encontrou na fila aptos a thread com tid: %d\n\n", thread->tid);
-  //           break;
-  //         }
-  //       }
-  //     }
-
-  //     if(found == 0){
-  //             if(FirstFila2(&filaBloqueados) != 0)
-  //             {
-  //               printf("#find_thread: FirstFila2: fila bloq vazia ou erro\n\n");
-  //               return -1;
-  //             }
-
-  //             while(NextFila2(&filaBloqueados) == 0)
-  //             {
-  //               if(filaBloqueados.it == 0)
-  //               {
-  //                 int found = 0;
-  //                 break;
-  //               }
-  //               else
-  //               {
-  //                 thread = (TCB_t *)GetAtIteratorFila2(&filaBloqueados);
-  //                 if(thread->tid == tid)
-  //                 {
-  //                   int found = 1;
-  //                   printf("encontrou na fila bloq a thread com tid: %d\n\n", thread->tid);
-  //                   break;
-  //                 }
-  //               }
-  //             }
-  //     }
-  // }
-  // if(found == 0)
-  // {
-  //   printf("AEAEOOAEA\n");
-  //   return -1;
-  // }
-
   thread = running_thread;
 
   JCB_t *jcb = malloc(sizeof(JCB_t));

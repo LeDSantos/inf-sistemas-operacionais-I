@@ -22,12 +22,18 @@ DIRS=$(LIB) $(INC) $(BIN) $(SRC) $(TST)
 CC=gcc
 CCFLAGS=-c -lm -m32 -Wall -I$(INC)
 
-all: teste
+all: t1 t2
 
-teste: cdata.o cthread.o teste1.o
-	$(CC) teste2.o cdata.o cthread.o $(BIN)support.o -o teste1
+t1: cdata.o cthread.o teste1.o
+	$(CC) teste1.o cdata.o cthread.o $(BIN)support.o -o teste1
+
+t2: cdata.o cthread.o teste2.o
+	$(CC) teste2.o cdata.o cthread.o $(BIN)support.o -o teste2
 
 teste1.o:
+	$(CC) $(CCFLAGS) $(TST)teste1.c
+
+teste2.o:
 	$(CC) $(CCFLAGS) $(TST)teste2.c
 
 cdata.o:
