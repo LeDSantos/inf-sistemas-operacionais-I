@@ -1,5 +1,5 @@
 #
-# cthread.c
+# Makefile
 # Biblioteca cthreads
 #
 # Instituto de Informática - UFRGS
@@ -15,8 +15,11 @@ INC=./include/
 BIN=./bin/
 SRC=./src/
 TST=./testes/
+EXP=./exemplos/
 
-DIRS=$(LIB) $(INC) $(BIN) $(SRC) $(TST)
+DIRS=$(LIB) $(INC) $(BIN) $(SRC) $(TST) $(EXP)
+
+LIBS=libcthread.a
 
 CC=gcc
 CCFLAGS=-c -lm -m32 -Wall -I$(INC)
@@ -49,3 +52,32 @@ cthread.o:
 
 clean:
 	find . -type f ! -name 'support.o' ! -name "*.c" ! -name "*.h" ! -name "Makefile" ! -name "*.pdf" -delete
+
+
+# compilar os exemplos fornecidos
+#
+# all: t1 t2 t3 exp1 exp2 exp3 exp4 exp5 exp6 exp7 exp8
+#
+# exp1: exemplos.c
+# 	$(CC) barbeiro.o cdata.o cthread.o $(BIN)support.o -o barbeiro
+
+# exp2: exemplos.c
+# 	$(CC) exemplo.o cdata.o cthread.o $(BIN)support.o -o exemplo
+
+# exp3: exemplos.c
+# 	$(CC) filosofos.o cdata.o cthread.o $(BIN)support.o -o filosofos
+
+# exp4: exemplos.c
+# 	$(CC) mandel.o cdata.o cthread.o $(BIN)support.o -o mandel
+
+# exp5: exemplos.c
+# 	$(CC) prodcons.o cdata.o cthread.o $(BIN)support.o -o prodcons
+
+# exp6: exemplos.c
+# 	$(CC) series.o cdata.o cthread.o $(BIN)support.o -o series
+
+# exp7: exemplos.c
+# 	$(CC) teste_vetor.o cdata.o cthread.o $(BIN)support.o -o teste_vetor
+
+# exemplos.c:
+# 	$(CC) $(CCFLAGS) $(EXP)*.c
