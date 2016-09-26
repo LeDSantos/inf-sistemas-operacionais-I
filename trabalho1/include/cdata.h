@@ -41,5 +41,7 @@ typedef struct s_JCB {
 unsigned int ticket_gen();
 int find_thread(int tid, PFILA2 fila);
 int remove_thread(int tid, PFILA2 fila);
+void debugOn();
+void debugOff();
 
 #endif

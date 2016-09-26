@@ -57,7 +57,7 @@ clean:
 # compilar os exemplos fornecidos
 #
 # all: t1 t2 t3 exp1 exp2 exp3 exp4 exp5 exp6 exp7 exp8
-#
+
 # exp1: exemplos.c
 # 	$(CC) barbeiro.o cdata.o cthread.o $(BIN)support.o -o barbeiro
 

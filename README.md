@@ -1,8 +1,7 @@
 # INF01142 - Sistemas Operacionais I N
 Trabalhos da disciplina de Sistemas Operacionais I N - Instituto de Informática da UFRGS
 
-### Trabalho 1
-Biblioteca de threads *cthreads*
+### Trabalho 1 - Biblioteca de threads *cthreads*
 
 Biblioteca de threads em nível de usuário (modelo N:1). Essa biblioteca de threads, denominada de compact thread (ou apenas cthread), deverá oferecer capacidades básicas para programação com threads como criação, execução, sincronização, término e trocas de contexto.
 
@@ -45,7 +44,8 @@ Quando executada corretamente: retorna 0 (zero) Caso contrário, retorna um val
 int csignal (csem_t *sem);
 
 Parâmetros:
-sem: ponteiro para uma variável do tipo semáforo. Retorno:
+sem: ponteiro para uma variável do tipo semáforo. 
+Retorno:
 Quando executada corretamente: retorna 0 (zero) Caso contrário, retorna um valor negativo.
 ```
 
@@ -59,5 +59,4 @@ Retorno:
 Quando executada corretamente: retorna 0 (zero) Caso contrário, retorna um valor negativo.
 ```
 
-### Trabalho 2
-Sistema de arquivos
+### Trabalho 2 - Sistema de arquivos

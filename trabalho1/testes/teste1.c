@@ -54,8 +54,9 @@ void excl(){
 
 int main()
 {
+	debugOn();
 	printf("criando uma thread para a funcao hello\n");
-	thello = (int)ccreate((void *)hello, NULL);
+	thello = ccreate((void *)hello, NULL);
 
 	printf("criando uma thread para a funcao space\n");
 	tspace = ccreate((void *)space, (void *)NULL);
@@ -66,10 +67,104 @@ int main()
 	printf("criando uma thread para a funcao excl\n");
 	texcl = ccreate((void *)excl, (void *)NULL);
 
-	printf("join da main com hello\n");
-	cjoin(thello);
+	// printf("join da main com hello\n");
+	// cjoin(thello);
 
-	printf("yield na main\n");
+	// printf("yield na main\n");
+	// cyield();
+
+	int i = 0;
+	for (i = 0; i < 150; ++i)
+	{
+		ccreate((void *)hello, NULL);
+	}
+
+
+
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
+	cyield();
 	cyield();
 
 	printf("main terminando\n");

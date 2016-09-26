@@ -23,6 +23,7 @@
 // indicador de inicialização da biblioteca
 int has_init_cthreads = 0;
 int thread_count = 1;
+int debug = 0; // = 1 ativa printfs para debug das funções
 
 // toda thread deve passar controle para o scheduler ao sair de execução
 ucontext_t scheduler;
@@ -92,8 +93,11 @@ void cunjoin_thread(int tid)
 */
 void *cscheduler()
 {
-  // printf("#scheduler em ação\n\n\n");
-  if(running_thread)
+  if(debug == 1)
+  {
+    printf("#scheduler em ação\n\n\n");
+  }
+  if(running_thread != NULL)
   {
     TCB_t *finalize;
     finalize = running_thread;
@@ -111,15 +115,19 @@ void *cscheduler()
   int diff = 255;
   int lowest_tid = thread_count;
 
-  printf("#scheduler:\nnum sorteado: %d\n\n", draw);
+  if(debug == 1)
+  {
+    printf("#scheduler:\nnum sorteado: %d\n\n", draw);
+  }
 
   if(FirstFila2(&filaAptos) != 0)
   {
-    printf("fila aptos está vazia, segue execução\n\n");
+    if(debug == 1)
+    {
+      printf("fila aptos está vazia, segue execução\n\n");
+    }
     return 0;
   }
-
-  // PNODE2 aux_it = filaAptos.it;
 
   TCB_t *lucky;
   TCB_t *aux_thread;
@@ -130,8 +138,12 @@ void *cscheduler()
   min_diff = diff;
   lowest_tid = aux_thread->tid;
   lucky = aux_thread;
-  // printf("procurando ganhador:\ntid: %d\nticket: %d\ndiff: %d\n\n", aux_thread->tid, aux_thread->ticket, diff);
-  // printf("atual ganhador, tid: %d\n\n", lucky->tid);
+
+  if(debug == 1)
+  {
+    printf("procurando ganhador:\ntid: %d\nticket: %d\ndiff: %d\n\n", aux_thread->tid, aux_thread->ticket, diff);
+    printf("atual ganhador, tid: %d\n\n", lucky->tid);
+  }
 
   while(NextFila2(&filaAptos) == 0)
   {
@@ -141,15 +153,22 @@ void *cscheduler()
     }
     aux_thread = (TCB_t *)GetAtIteratorFila2(&filaAptos);
     diff = abs(draw - aux_thread->ticket);
-    // printf("procurando ganhador:\ntid: %d\nticket: %d\ndiff: %d\n\n", aux_thread->tid, aux_thread->ticket, diff);
+
+    if(debug == 1)
+    {
+      printf("procurando ganhador:\ntid: %d\nticket: %d\ndiff: %d\n\n", aux_thread->tid, aux_thread->ticket, diff);
+    }
 
     if(aux_thread->ticket == draw && aux_thread->tid < lowest_tid)
     {
       lucky = aux_thread;
       lowest_tid = lucky->tid;
-      // aux_it = filaAptos.it;
       min_diff = diff;
-      // printf("atual ganhador, tid: %d\n\n", lucky->tid);
+
+      if(debug == 1)
+      {
+        printf("atual ganhador, tid: %d\n\n", lucky->tid);
+      }
     }
     else if(diff <= min_diff)
     {
@@ -157,23 +176,27 @@ void *cscheduler()
       {
         lucky = aux_thread;
         lowest_tid = lucky->tid;
-        // aux_it = filaAptos.it;
         min_diff = diff;
-        // printf("atual ganhador, tid: %d\n\n", lucky->tid);
+
+        if(debug == 1)
+        {
+          printf("atual ganhador, tid: %d\n\n", lucky->tid);
+        }
       }
       else if(diff < min_diff)
       {
         lucky = aux_thread;
         lowest_tid = lucky->tid;
-        // aux_it = filaAptos.it;
         min_diff = diff;
-        // printf("atual ganhador, tid: %d\n\n", lucky->tid);
+
+        if(debug == 1)
+        {
+        printf("atual ganhador, tid: %d\n\n", lucky->tid);
+        }
       }
     }
   }
   printf("vencedor:\ntid: %d\nticket: %d\ndiff: %d\n\n", lucky->tid, lucky->ticket, min_diff);
-  // filaAptos.it = aux_it;
-  // DeleteAtIteratorFila2(&filaAptos);
 
 /*
 ** dispatcher
@@ -181,9 +204,9 @@ void *cscheduler()
 */
   running_thread = lucky;
   remove_thread(running_thread->tid, &filaAptos);
-  lucky->state = PROCST_EXEC;
+  running_thread->state = PROCST_EXEC;
 
-  setcontext(&lucky->context);
+  setcontext(&running_thread->context);
 }
 
 /*
@@ -192,18 +215,23 @@ void *cscheduler()
 */
 void init_cthreads()
 {
-  // printf("#init_cthreads em ação\n\n\n");
+  if(debug == 1)
+  {
+    printf("#init_cthreads em ação\n\n");
+  }
   if(CreateFila2(&filaAptos) != 0)
   {
-    printf("falha ao criar fila aptos\n");
+    printf("#init_cthreads: falha ao criar fila aptos\n");
   }
+
   if(CreateFila2(&filaBloqueados) != 0)
   {
-    printf("falha ao criar fila bloqueados\n");
+    printf("#init_cthreads: falha ao criar fila bloqueados\n");
   }
+
   if(CreateFila2(&filaJCB) != 0)
   {
-    printf("falha ao criar fila join\n");
+    printf("#init_cthreads: falha ao criar fila join\n");
   }
 
   // inicialização do scheduler
@@ -218,10 +246,6 @@ void init_cthreads()
   main_thread.state = PROCST_EXEC;
   main_thread.ticket = ticket_gen();
   getcontext(&main_thread.context);
-
-  // precisa malloc pra stack da main?
-  // main_thread->context.uc_stack.ss_sp = malloc(SIGSTKSZ);
-  // main_thread->context.uc_stack.ss_size = SIGSTKSZ;
 
   running_thread = &main_thread;
 
@@ -241,7 +265,7 @@ int ccreate (void* (*start)(void*), void *arg)
   cthread->tid = thread_count; thread_count++;
   cthread->state = PROCST_CRIACAO;
   cthread->ticket = ticket_gen();
-  // cthread->context = malloc(sizeof(ucontext_t));
+
   getcontext(&cthread->context);
   cthread->context.uc_link = &scheduler;
   cthread->context.uc_stack.ss_sp = malloc(SIGSTKSZ);
@@ -257,7 +281,12 @@ int ccreate (void* (*start)(void*), void *arg)
     printf("#ccreate: falha ao criar tid %d\n\n", cthread->tid);
     return -1;
   }
-  printf("#ccreate:\nthread tid %d\nticket: %d\n\n", cthread->tid, cthread->ticket);
+
+  if(debug == 1)
+  {
+    printf("#ccreate:\nthread tid %d\nticket: %d\n\n", cthread->tid, cthread->ticket);
+  }
+
   return cthread->tid;
 }
 
@@ -273,7 +302,11 @@ int cyield(void)
 
   if(FirstFila2(&filaAptos) != 0)
   {
-    printf("fila aptos vazia, segue executando\n");
+    if(debug == 1)
+    {
+      printf("fila aptos vazia, segue executando\n");
+    }
+
     return 0;
   }
 
@@ -305,14 +338,23 @@ int cjoin(int tid)
 
   if(tid == 0)
   {
-    // printf("não pode dar join na main\n");
+    if(debug == 1)
+    {
+      printf("#cjoin: nao e permitido dar join na main\n");
+    }
+
     return -1;
   }
 
   if(find_thread(tid, &filaAptos) != 0)
   {
     if(find_thread(tid, &filaBloqueados) != 0){
-    printf("#cjoin: tid %d não existe ou já terminou\n\n", tid);
+
+    if(debug == 1)
+    {
+      printf("#cjoin: tid %d nao existe ou ja terminou\n\n", tid);
+    }
+
     return -1;
     }
   }
@@ -322,7 +364,12 @@ int cjoin(int tid)
 
   JCB_t *jcb = malloc(sizeof(JCB_t));
   jcb->tid = tid;
-  printf("#cjoin: jcb->tid: %d\n", jcb->tid);
+
+  if(debug == 1)
+  {
+    printf("#cjoin: jcb->tid: %d\n", jcb->tid);
+  }
+
   jcb->thread = thread;
 
   thread->state = PROCST_BLOQ;
@@ -356,7 +403,11 @@ int csem_init(csem_t *sem, int count)
     printf("falha ao criar semaforo\n");
     return -1;
   }
-  printf("semaforo criado; recursos: %d\n", sem->count);
+  if(debug == 1)
+  {
+    printf("semaforo criado; recursos: %d\n", sem->count);
+  }
+
   return 0;
 }
 
@@ -384,7 +435,10 @@ int cwait(csem_t *sem)
 
   if(sem->count < 0)
   {
-    printf("nenhum recurso disponível, entrou na fila\n recursos: %d\n", sem->count);
+    if(debug == 1)
+    {
+      printf("nenhum recurso disponível, entrou na fila\n recursos: %d\n", sem->count);
+    }
 
     TCB_t *thread;
     thread = running_thread;
@@ -399,7 +453,11 @@ int cwait(csem_t *sem)
     return 0;
   }
 
-  printf("recursos: %d\n", sem->count);
+  if(debug == 1)
+  {
+    printf("recursos: %d\n", sem->count);
+  }
+
   return 0;
 }
 
@@ -416,13 +474,21 @@ int csignal(csem_t *sem)
 
   if(sem->fila == NULL)
   {
-    printf("semaforo não inicializado ou usou signal antes de wait\n");
+    if(debug == 1)
+    {
+      printf("semaforo não inicializado ou usou signal antes de wait\n");
+    }
+
     return -1;
   }
 
   if(FirstFila2(sem->fila) != 0)
   {
-    printf("semaforo vazio, liberando\n");
+    if(debug == 1)
+    {
+      printf("semaforo vazio, liberando\n");
+    }
+
     free(sem->fila);
     sem->fila = NULL;
     return 0;
@@ -430,32 +496,28 @@ int csignal(csem_t *sem)
 
   sem->count++;
 
-  // if(sem->count > 0)
-  // {
-    TCB_t *thread;
-    thread = (TCB_t *)GetAtIteratorFila2(sem->fila);
-    thread->state = PROCST_APTO;
-    DeleteAtIteratorFila2(sem->fila);
+  TCB_t *thread;
+  thread = (TCB_t *)GetAtIteratorFila2(sem->fila);
+  thread->state = PROCST_APTO;
+  DeleteAtIteratorFila2(sem->fila);
 
-    if(remove_thread(thread->tid, &filaBloqueados) != 0)
-    {
-      printf("#csignal: falha ao remover thread da fila bloq\n");
-      return -1;
-    }
+  if(remove_thread(thread->tid, &filaBloqueados) != 0)
+  {
+    printf("#csignal: falha ao remover thread da fila bloqueados\n");
+    return -1;
+  }
 
-    if(AppendFila2(&filaAptos, (void *) thread) != 0)
-    {
+  if(AppendFila2(&filaAptos, (void *) thread) != 0)
+  {
+    printf("#csignal: falha ao colocar thread da fila aptos\n");
+  }
 
-      printf("#csignal: falha ao colocar thread da fila aptos\n");
-    }
-
+  if(debug == 1)
+  {
     printf("recursos: %d\n", sem->count);
+  }
 
-    return 0;
-  // }
-
-  // printf("recursos: %d\n", sem->count);
-  // return 0;
+  return 0;
 }
 
 /*
@@ -472,4 +534,14 @@ int cidentify (char *name, int size)
   printf("Cristiano Salla Lunardi - 240508\nGustavo Madeira Santana - 252853\n\n");
 
   return 0;
+}
+
+void debugOn()
+{
+  debug = 1;
+}
+
+void debugOff()
+{
+  debug = 0;
 }
