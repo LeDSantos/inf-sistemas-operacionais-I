@@ -53,6 +53,10 @@ void excl(){
 
 int main()
 {
+
+	printf("debug ligado\n");
+	debugOn();
+
 	printf("#main: criando uma thread para a funcao hello\n");
 	thello = ccreate((void *)hello, NULL);
 

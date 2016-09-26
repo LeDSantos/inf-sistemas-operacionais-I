@@ -33,6 +33,10 @@ void func2(void *arg) {
 }
 
 int main(int argc, char *argv[]) {
+
+	printf("debug ligado\n");
+	debugOn();
+
 	int i;
 
 	id1 = ccreate((void *)func1, (void *)&i);

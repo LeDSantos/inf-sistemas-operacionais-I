@@ -26,7 +26,7 @@ extern int debug;
 unsigned int ticket_gen()
 {
   unsigned int random = Random2();
-  while(random >= 255)
+  while(random > 255)
   {
     random = random/8;
   }

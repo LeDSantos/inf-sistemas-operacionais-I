@@ -27,68 +27,65 @@ void excl();
 
 int thello, tspace, tworld, texcl;
 
-	csem_t sem;
-
 void hello(){
-	printf("hello executando cwait\n");
-	cwait(&sem);
+	cjoin(tworld);
+	printf("hello\n");
 	printf("sou a thread hello com tid: %d\n", thello);
-	csignal(&sem);
 }
 
 void space(){
-	printf("space executando cwait\n");
-	cwait(&sem);
+	cjoin(tworld);
+	printf("_\n");
 	printf("sou a thread space com tid: %d\n", tspace);
-	csignal(&sem);
 }
 
 void world(){
+	cjoin(thello);
+	printf("world\n");
+	cyield();
 	printf("sou a thread world com tid: %d\n", tworld);
 }
 
 void excl(){
+	cjoin(texcl);
+	printf("!\n");
 	printf("sou a thread excl com tid: %d\n", texcl);
 }
 
 int main()
 {
-	printf("#main: criando uma thread para a funcao hello\n");
+
+	printf("debug ligado\n");
+	debugOn();
+
+	printf("criando uma thread para a funcao hello\n");
 	thello = ccreate((void *)hello, NULL);
 
-	printf("#main: criando uma thread para a funcao space\n");
+	printf("criando uma thread para a funcao space\n");
 	tspace = ccreate((void *)space, (void *)NULL);
 
-	printf("#main: criando uma thread para a funcao world\n");
+	printf("criando uma thread para a funcao world\n");
 	tworld = ccreate((void *)world, (void *)NULL);
 
-	printf("#main: criando uma thread para a funcao excl\n");
+	printf("criando uma thread para a funcao excl\n");
 	texcl = ccreate((void *)excl, (void *)NULL);
 
-	printf("#main: criando semaforo\n");
-	csem_init(&sem, 1);
+	printf("criando 100 threads para a funcao hello\n");
+	int i = 0;
+	for (i = 0; i < 100; ++i)
+	{
+		ccreate((void *)hello, NULL);
+	}
 
-	printf("#main: executando cwait\n");
-	cwait(&sem);
 
-	printf("#main: 5 yields\n");
-	cyield();
-	cyield();
-	cyield();
-	cyield();
-	cyield();
+	printf("dando 50 yields na main\n");
 
-	printf("#main: csignal\n");
-	csignal(&sem);
+	for (int i = 0; i < 50; ++i)
+	{
+		cyield();
+	}
 
-	printf("#main: 5 yields\n");
-	cyield();
-	cyield();
-	cyield();
-	cyield();
-	cyield();
-
-	printf("#main: terminando\n");
+	printf("main terminando\n");
 
 	return 0;
 }
