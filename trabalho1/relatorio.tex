@@ -56,7 +56,7 @@ A thread que chamou a função \textit{cyield} tem seu estado alterado para \tex
 Usada para bloquear uma thread até que outra thread termine sua execução. Tem como único parâmetro o valor do \textit{tid} da thread que deverá finalizar sua execução.
 A função que chamou \textit{cjoin} só voltará para a fila de aptos após a thread indicada terminar.
 
-Foi criado uma estrutura auxiliar chamada de \textit{Join Control Block}, ou \textit{JCB}. Nela é armazenado qual thread será bloqueada, e o \textit{tid} da thread que a libera. Existe ainda uma função auxiliar \textit{cunjoin\_thread} que cuida do desbloqueio da thread quando a indicada termina sua execução, seu comportamento é descrito em outra seção.
+Foi criado uma estrutura auxiliar chamada de \textit{Join Control Block}, ou \textit{JCB}. Neste descritor é armazenado qual thread será bloqueada, e o \textit{tid} da thread que a libera. Existe ainda uma função auxiliar \textit{cunjoin\_thread} que cuida do desbloqueio da thread quando a indicada termina sua execução, seu comportamento é descrito em outra seção.
 
 \subsection{Função \textit{csem\_init}}
 Nesta função é inicializado o \textit{semáforo}. Recebe como parâmetros um ponteiro para a struct do semáforo e a quantidade de recursos que este semáforo terá. Para simular um \textit{mutex}, a quantidade de recursos deve ser \textit{1}.
@@ -105,25 +105,25 @@ Todos testes podem ser executados com o modo debug ligado, basta adicionar debug
 \begin{itemize}
 \item Arquivo: teste1.c | ./teste1 | ./teste1debug
 \item Funções usadas: ccreate, cyield
-\item Threads criadas: 10
+\item Threads criadas: 104
 \end{itemize}
 
 \subsection{Teste do \textit{cjoin}}
 \begin{itemize}
 \item Arquivo: teste2.c | ./teste2 | ./teste2debug
 \item Funções usadas: ccreate, cjoin
-\item Threads criadas: 5
+\item Threads criadas: 3
 \end{itemize}
 
 \subsection{Teste do \textit{semáforo}}
 \begin{itemize}
-\item Arquivo: teste4.c | ./teste4 | ./teste4debug
+\item Arquivo: teste3.c | ./teste3 | ./teste3debug
 \item Funções usadas: ccreate, csem\_init, cwait, csignal
-\item Threads criadas: 10
+\item Threads criadas: 5
 \end{itemize}
 
 \section{Problemas}
 \subsection{Segmentation fault...}
-cjoin csem
+Um problema foi identificado ao misturar a função cjoin
 
 \end{document}

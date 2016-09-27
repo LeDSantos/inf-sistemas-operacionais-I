@@ -1,6 +1,6 @@
 /*
 **
-** teste1.c
+** teste3debug.c
 ** Teste da Biblioteca cthreads
 **
 ** Instituto de Informática - UFRGS
