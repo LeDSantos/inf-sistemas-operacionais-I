@@ -97,6 +97,7 @@ void *cscheduler()
   {
     printf("#scheduler em ação\n\n\n");
   }
+
   if(running_thread != NULL)
   {
     TCB_t *finalize;

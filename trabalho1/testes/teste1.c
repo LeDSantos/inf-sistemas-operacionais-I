@@ -73,10 +73,9 @@ int main()
 		ccreate((void *)hello, NULL);
 	}
 
-
 	printf("dando 50 yields na main\n");
 
-	for (int i = 0; i < 50; ++i)
+	for (i = 0; i < 50; ++i)
 	{
 		cyield();
 	}

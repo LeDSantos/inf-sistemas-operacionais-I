@@ -26,8 +26,6 @@ CCFLAGS=-c -lm -m32 -Wall -I$(INC)
 
 all: t1 t1d t2 t2d t3 t3d t4 t4d
 
-
-### TESTES NORMAIS
 t1: cdata.o cthread.o teste1.o
 	$(CC) teste1.o cdata.o cthread.o $(BIN)support.o -o teste1
 
@@ -46,15 +44,13 @@ teste2.o:
 teste3.o:
 	$(CC) $(CCFLAGS) $(TST)teste3.c
 
-
-### TESTES COM DEBUG
-t1d: cdata.o cthread.o teste1.o
+t1d: cdata.o cthread.o teste1debug.o
 	$(CC) teste1debug.o cdata.o cthread.o $(BIN)support.o -o teste1debug
 
-t2d: cdata.o cthread.o teste2.o
+t2d: cdata.o cthread.o teste2debug.o
 	$(CC) teste2debug.o cdata.o cthread.o $(BIN)support.o -o teste2debug
 
-t3d: cdata.o cthread.o teste3.o
+t3d: cdata.o cthread.o teste3debug.o
 	$(CC) teste3debug.o cdata.o cthread.o $(BIN)support.o -o teste3debug
 
 teste1debug.o:
@@ -65,7 +61,6 @@ teste2debug.o:
 
 teste3debug.o:
 	$(CC) $(CCFLAGS) $(TST)teste3debug.c
-
 
 cdata.o:
 	$(CC) $(CCFLAGS) $(SRC)cdata.c
