@@ -24,7 +24,7 @@ LIBS=libcthread.a
 CC=gcc
 CCFLAGS=-c -lm -m32 -Wall -I$(INC)
 
-all: t1 t1d t2 t2d t3 t3d t4 t4d
+all: t1 t1d t2 t2d t3 t3d
 
 t1: cdata.o cthread.o teste1.o
 	$(CC) teste1.o cdata.o cthread.o $(BIN)support.o -o teste1

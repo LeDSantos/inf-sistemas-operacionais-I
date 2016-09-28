@@ -92,6 +92,9 @@ int main()
 	cyield();
 	cyield();
 
+	printf("#main: cjoin na thread hello\n");
+	cjoin(thello);
+
 	printf("#main: terminando\n");
 
 	return 0;

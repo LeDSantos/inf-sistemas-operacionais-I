@@ -197,7 +197,11 @@ void *cscheduler()
       }
     }
   }
-  printf("vencedor:\ntid: %d\nticket: %d\ndiff: %d\n\n", lucky->tid, lucky->ticket, min_diff);
+
+  if(debug == 1)
+  {
+    printf("vencedor:\ntid: %d\nticket: %d\ndiff: %d\n\n", lucky->tid, lucky->ticket, min_diff);
+  }
 
 /*
 ** dispatcher

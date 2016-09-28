@@ -49,6 +49,11 @@ int main(int argc, char *argv[]) {
 	printf("main dando join em ID1\n");
 	cjoin(id1);
 
+	cyield();
+	cyield();
+	cyield();
+
+
 	printf("Eu sou a main voltando para terminar o programa\n");
 
 	return 0;
