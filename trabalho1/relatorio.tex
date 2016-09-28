@@ -111,19 +111,28 @@ Todos testes podem ser executados com o modo debug ligado, basta adicionar debug
 \subsection{Teste do \textit{cjoin}}
 \begin{itemize}
 \item Arquivo: teste2.c | ./teste2 | ./teste2debug
-\item Funções usadas: ccreate, cjoin
+\item Funções usadas: ccreate, cjoin, cyield
 \item Threads criadas: 3
 \end{itemize}
 
 \subsection{Teste do \textit{semáforo}}
 \begin{itemize}
 \item Arquivo: teste3.c | ./teste3 | ./teste3debug
-\item Funções usadas: ccreate, csem\_init, cwait, csignal
+\item Funções usadas: ccreate, csem\_init, cwait, csignal, cyield
 \item Threads criadas: 5
 \end{itemize}
 
 \section{Problemas}
 \subsection{Segmentation fault...}
-Um problema foi identificado ao misturar a função cjoin
+Um problema foi identificado ao misturar a função cjoin com as diretivas do semáforo. Dependendo da ordem que ocorre a execução, por exemplo, cwait seguindo de um cjoin, o teste é encerrado com erro de segmentação.
+
+Um dos comandos usados para debug foi:
+\begin{verbatim}
+valgrind --trace-children=yes --track-fds=yes --log-fd=2
+--error-limit=no --leak-check=full --show-possibly-lost=yes
+--track-origins=yes --show-reachable=yes <executavel>
+\end{verbatim}
+
+Diversos erros de segmentação foram corrigodos durante a produção do trabalho. Alocações estáticas foram trocadas por alocações dinâmicas onde era conveniente. Também foi implementado um melhor controle do que não estava mais em uso, consequentemente liberando a memória e evitando então erros de segmentação. O único erro que restou foi o que envolve o cjoin em uso com o operador de semáforo.
 
 \end{document}
