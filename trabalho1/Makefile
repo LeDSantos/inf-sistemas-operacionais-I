@@ -69,7 +69,7 @@ cthread.o:
 	$(CC) $(CCFLAGS) $(SRC)cthread.c
 
 clean:
-	find . -type f ! -name 'support.o' ! -name "*.c" ! -name "*.h" ! -name "Makefile" ! -name "*.pdf" ! -name "*.tex" -delete
+	find . -type f ! -name 'support.o' ! -name "*.c" ! -name "*.h" ! -name "Makefile" ! -name "*.pdf" ! -name "*.tex" ! -name "*.png" -delete
 
 
 # compilar os exemplos fornecidos

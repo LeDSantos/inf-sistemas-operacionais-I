@@ -41,6 +41,13 @@ O funcionamento de cada função será destacado nas seções seguintes.
 \subsection{Função \textit{ccreate}}
 Principal função da biblioteca, \textit{ccreate} é usada para criar threads e associa-lá a uma função. Recebe como parâmetros uma função e um argumento e retorna o \textit{tid} da thread criada.
 
+\begin{figure}[h]
+    \centering
+    \includegraphics[scale=0.4]{imagens/ccreate.png}
+    \caption{Criação e definição do contexto de uma nova thread}
+    \label{fig:sym4}
+\end{figure}
+
 Para criação da thread, é realizado uma alocação na memória para o \textit{TCB}, e alguns dados são inicializados. A thread receberá uma \textit{tid}, valor inteiro que é incrementado a cada criação. Seu estado durante a criação é 0\footnotemark. Para criar o contexto da thread, inicialmente é feito uso da função \textit{getcontext} para ter o modelo pronto, depois então é definido que ao fim da execução da thread, o contexto a ser carregado deve ser o do \textit{scheduler}, através do \textit{uc\_link}. Também é feita uma alocação de memória para a pilha que será usada pelo contexto, através da \textit{ss\_sp} e \textit{ss\_size}.
 \footnotetext{\textit{PROCST\_CRIACAO}}
 
@@ -57,6 +64,13 @@ Usada para bloquear uma thread até que outra thread termine sua execução. Tem
 A função que chamou \textit{cjoin} só voltará para a fila de aptos após a thread indicada terminar.
 
 Foi criado uma estrutura auxiliar chamada de \textit{Join Control Block}, ou \textit{JCB}. Neste descritor é armazenado qual thread será bloqueada, e o \textit{tid} da thread que a libera. Existe ainda uma função auxiliar \textit{cunjoin\_thread} que cuida do desbloqueio da thread quando a indicada termina sua execução, seu comportamento é descrito em outra seção.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[scale=0.4]{imagens/jcb.png}
+    \caption{Join Control Block, descritor auxiliar para controlar threads com \textit{join}}
+    \label{fig:sym4}
+\end{figure}
 
 \subsection{Função \textit{csem\_init}}
 Nesta função é inicializado o \textit{semáforo}. Recebe como parâmetros um ponteiro para a struct do semáforo e a quantidade de recursos que este semáforo terá. Para simular um \textit{mutex}, a quantidade de recursos deve ser \textit{1}.
@@ -77,6 +91,13 @@ Essa função tem a finalidade de inicializar as estruturas de dados usadas pela
 \subsection{Função \textit{cscheduler}}
 O \textit{scheduler} implementado é do tipo não preemptivo, sem priodidades, e segue uma política de loteria. Toda thread ao ser criada recebe um bilhete \footnotemark, número aleatório entre 0 e 255. O \textit{scheduler} então sorteia um número e escolhe a thread que tem um bilhete mais próximo do sorteado. Em caso de duas threads com mesmo bilhete, a escolhida será a  que tiver menor \textit{tid}.
 \footnotetext{o número é gerado pela função ticket\_gen}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[scale=0.4]{imagens/scheduler.png}
+    \caption{Inicialização do scheduler, e criação de seu contexto}
+    \label{fig:sym4}
+\end{figure}
 
 \subsection{Função \textit{find\_thread}}
 Função auxiliar para saber se uma dada thread existe em uma dada fila. Recebe como parâmetros um \textit{tid} e uma \textit{fila} (fila de aptos ou bloqueados por exemplo). Retorna \textit{0} se a thread foi encontrada ou \textit{-1} se a thread não foi encontrada.
