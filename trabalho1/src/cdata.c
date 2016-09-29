@@ -25,13 +25,7 @@ extern int debug;
 
 unsigned int ticket_gen()
 {
-  unsigned int random = Random2();
-  while(random > 255)
-  {
-    random = random/8;
-  }
-
-  return random;
+  return Random2() % 256;
 }
 
 int find_thread(int tid, PFILA2 fila)
