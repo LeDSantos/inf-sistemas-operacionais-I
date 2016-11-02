@@ -1,6 +1,6 @@
 int identify2 (char *name, int size)
 {
-
+  printf("\nGustavo Madeira Santana - 252853\nCristiano Salla Lunardi - 240508\n\n");
 }
 
 
@@ -20,6 +20,12 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna o handle 
 FILE2 create2 (char *filename)
 {
 
+    if()
+  {
+    return -1;
+  }
+
+  return handle;
 }
 
 /*-----------------------------------------------------------------------------
@@ -34,6 +40,12 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna "0" (zero
 int delete2 (char *filename)
 {
 
+  if()
+  {
+    return -1;
+  }
+
+  return 0;
 }
 
 
@@ -54,6 +66,12 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna o handle 
 FILE2 open2 (char *filename)
 {
 
+  if()
+  {
+    return -1;
+  }
+
+  return handle;
 }
 
 
@@ -68,6 +86,12 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna "0" (zero
 int close2 (FILE2 handle)
 {
 
+  if()
+  {
+    return -1;
+  }
+
+  return 0;
 }
 
 /*-----------------------------------------------------------------------------
@@ -86,6 +110,12 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna o número
 int read2 (FILE2 handle, char *buffer, int size)
 {
 
+  if()
+  {
+    return -1;
+  }
+
+  return bytesread;
 }
 
 
@@ -104,6 +134,12 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna o número
 int write2 (FILE2 handle, char *buffer, int size)
 {
 
+  if()
+  {
+    return -1;
+  }
+
+  return byteswritten;
 }
 
 
@@ -141,6 +177,12 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna "0" (zero
 int seek2 (FILE2 handle, DWORD offset)
 {
 
+  if()
+  {
+    return -1;
+  }
+
+  return 0;
 }
 
 
@@ -162,6 +204,12 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna "0" (zero
 int mkdir2 (char *pathname)
 {
 
+  if()
+  {
+    return -1;
+  }
+
+  return 0;
 }
 
 
@@ -184,6 +232,12 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna "0" (zero
 int rmdir2 (char *pathname)
 {
 
+  if()
+  {
+    return -1;
+  }
+
+  return 0;
 }
 
 
@@ -203,6 +257,12 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna o identif
 DIR2 opendir2 (char *pathname)
 {
 
+  if()
+  {
+    return -1;
+  }
+
+  return handle;
 }
 
 
@@ -224,6 +284,13 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna "0" (zero
 int readdir2 (DIR2 handle, DIRENT2 *dentry)
 {
 
+  if()
+  {
+    setInvalid(dentry);
+    return -1;
+  }
+
+  return 0;
 }
 
 
@@ -238,4 +305,10 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna "0" (zero
 int closedir2 (DIR2 handle)
 {
 
+  if()
+  {
+    return -1;
+  }
+
+  return 0;
 }

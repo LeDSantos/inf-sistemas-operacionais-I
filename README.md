@@ -10,4 +10,5 @@ Biblioteca de threads em nível de usuário (modelo N:1). Essa biblioteca de t
 ### Trabalho 2 - Task 2 File System (T2FS)
 
 O T2FS é um sistema de arquivos que emprega o método de alocação indexada combinada e os arquivos podem ser do tipo regular ou diretório. Um arquivo regular é aquele que contém dados de um usuário podendo ser um arquivo texto (caracteres ASC II) ou binário.
-[t2fs Wiki](https://github.com/gumadeiras/inf-sisop/wiki/Task-2-File-System-(T2FS))
+
+[T2FS Wiki](https://github.com/gumadeiras/inf-sisop/wiki/Task-2-File-System-(T2FS))
