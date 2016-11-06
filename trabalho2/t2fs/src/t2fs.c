@@ -1,8 +1,60 @@
+/*
+**
+** t2fs.c
+** Task 2 File System
+**
+** Instituto de Informática - UFRGS
+** Sistemas Operacionais I N 2016/2
+** Prof. Alexandre Carissimi
+**
+** Gustavo Madeira Santana
+** Cristiano Salla Lunardi
+**
+*/
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "../include/t2fs.h"
+#include "../include/apidisk.h"
+#include "../include/bitmap2.h"
+
+#define SUCCESS 0
+#define ERROR -1
+#define GROUP "Gustavo Madeira Santana - 252853, Cristiano Salla Lunardi - 240508"
+
+#define BLOCK_COUNT 2048
+#define INODE_COUNT 2048
+#define INODE_SIZE 64
+#define RECORD_SIZE 64
+#define RECORDS_PER_BLOCK (superblock.BlockSize) / RECORD_SIZE
+#define MAX_FILESIZE superblock.BlockSize * ((((superblock.BlockSize)*(superblock.BlockSize))/16) + ((superblock.BlockSize)/4) + 2)
+#define MAX_OPENFILES 20
+
+
+
+int disk_has_initialized = 0;
+
+
+void disk_init()
+{
+
+}
+
+
 int identify2 (char *name, int size)
 {
   printf("\nGustavo Madeira Santana - 252853\nCristiano Salla Lunardi - 240508\n\n");
-}
 
+  if(size < sizeof(GROUP))
+  {
+    return ERROR;
+  }
+
+  strncpy(name, GROUP, sizeof(GROUP));
+
+  return SUCCESS;
+}
 
 /*-----------------------------------------------------------------------------
 Função: Criar um novo arquivo.
@@ -20,9 +72,14 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna o handle 
 FILE2 create2 (char *filename)
 {
 
-    if()
+  if(!disk_has_initialized)
   {
-    return -1;
+    disk_init();
+  }
+
+  if()
+  {
+    return ERROR;
   }
 
   return handle;
@@ -39,13 +96,17 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna "0" (zero
 -----------------------------------------------------------------------------*/
 int delete2 (char *filename)
 {
+  if(!disk_has_initialized)
+  {
+    disk_init();
+  }
 
   if()
   {
-    return -1;
+    return ERROR;
   }
 
-  return 0;
+  return SUCCESS;
 }
 
 
@@ -65,10 +126,14 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna o handle 
 -----------------------------------------------------------------------------*/
 FILE2 open2 (char *filename)
 {
+  if(!disk_has_initialized)
+  {
+    disk_init();
+  }
 
   if()
   {
-    return -1;
+    return ERROR;
   }
 
   return handle;
@@ -85,13 +150,17 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna "0" (zero
 -----------------------------------------------------------------------------*/
 int close2 (FILE2 handle)
 {
+  if(!disk_has_initialized)
+  {
+    disk_init();
+  }
 
   if()
   {
-    return -1;
+    return ERROR;
   }
 
-  return 0;
+  return SUCCESS;
 }
 
 /*-----------------------------------------------------------------------------
@@ -109,10 +178,14 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna o número
 -----------------------------------------------------------------------------*/
 int read2 (FILE2 handle, char *buffer, int size)
 {
+  if(!disk_has_initialized)
+  {
+    disk_init();
+  }
 
   if()
   {
-    return -1;
+    return ERROR;
   }
 
   return bytesread;
@@ -133,10 +206,14 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna o número
 -----------------------------------------------------------------------------*/
 int write2 (FILE2 handle, char *buffer, int size)
 {
+  if(!disk_has_initialized)
+  {
+    disk_init();
+  }
 
   if()
   {
-    return -1;
+    return ERROR;
   }
 
   return byteswritten;
@@ -176,13 +253,17 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna "0" (zero
 -----------------------------------------------------------------------------*/
 int seek2 (FILE2 handle, DWORD offset)
 {
+  if(!disk_has_initialized)
+  {
+    disk_init();
+  }
 
   if()
   {
-    return -1;
+    return ERROR;
   }
 
-  return 0;
+  return SUCCESS;
 }
 
 
@@ -203,13 +284,17 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna "0" (zero
 -----------------------------------------------------------------------------*/
 int mkdir2 (char *pathname)
 {
+  if(!disk_has_initialized)
+  {
+    disk_init();
+  }
 
   if()
   {
-    return -1;
+    return ERROR;
   }
 
-  return 0;
+  return SUCCESS;
 }
 
 
@@ -231,13 +316,17 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna "0" (zero
 -----------------------------------------------------------------------------*/
 int rmdir2 (char *pathname)
 {
+  if(!disk_has_initialized)
+  {
+    disk_init();
+  }
 
   if()
   {
-    return -1;
+    return ERROR;
   }
 
-  return 0;
+  return SUCCESS;
 }
 
 
@@ -256,10 +345,14 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna o identif
 -----------------------------------------------------------------------------*/
 DIR2 opendir2 (char *pathname)
 {
+  if(!disk_has_initialized)
+  {
+    disk_init();
+  }
 
   if()
   {
-    return -1;
+    return ERROR;
   }
 
   return handle;
@@ -283,14 +376,18 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna "0" (zero
 -----------------------------------------------------------------------------*/
 int readdir2 (DIR2 handle, DIRENT2 *dentry)
 {
+  if(!disk_has_initialized)
+  {
+    disk_init();
+  }
 
   if()
   {
     setInvalid(dentry);
-    return -1;
+    return ERROR;
   }
 
-  return 0;
+  return SUCCESS;
 }
 
 
@@ -304,11 +401,15 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna "0" (zero
 -----------------------------------------------------------------------------*/
 int closedir2 (DIR2 handle)
 {
+  if(!disk_has_initialized)
+  {
+    disk_init();
+  }
 
   if()
   {
-    return -1;
+    return ERROR;
   }
 
-  return 0;
+  return SUCCESS;
 }
