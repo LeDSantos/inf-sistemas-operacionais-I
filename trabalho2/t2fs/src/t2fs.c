@@ -19,26 +19,82 @@
 #include "../include/apidisk.h"
 #include "../include/bitmap2.h"
 
-#define SUCCESS 0
-#define ERROR -1
 #define GROUP "Gustavo Madeira Santana - 252853, Cristiano Salla Lunardi - 240508"
 
-#define BLOCK_COUNT 2048
-#define INODE_COUNT 2048
-#define INODE_SIZE 64
-#define RECORD_SIZE 64
-#define RECORDS_PER_BLOCK (superblock.BlockSize) / RECORD_SIZE
-#define MAX_FILESIZE superblock.BlockSize * ((((superblock.BlockSize)*(superblock.BlockSize))/16) + ((superblock.BlockSize)/4) + 2)
+#define SUCCESS 0
+#define ERROR -1
+
+#define ID "T2FS"
+#define VERSION 7E02
+#define DISK "t2fs_disk.dat"
+
+//#define SECTOR_SIZE 256
+#define SECTOR_COUNT 32768
+#define BLOCK_SIZE 16
+#define BLOCK_COUNT 2048 //(superblock.diskSize / superblock.blockSize), 32768 div 16 = 2048
+// #define INODE_COUNT 2048
+// #define INODE_SIZE 64
+#define MAX_FILESIZE superblock.blockSize * ((((superblock.blockSize)*(superblock.blockSize))/16) + ((superblock.blockSize)/4) + 2) //352
 #define MAX_OPENFILES 20
 
+/* disk struct
+// superblock
+// bitmap blocks
+// bitmap inodes
+// inodes
+// data
+*/
 
+static int disk_initialized = 0;
+char buffer[SECTOR_SIZE];
+SB_t superblock;
 
-int disk_has_initialized = 0;
-
+/*
+** inicializa t2fs
+** criacao do superbloco
+*/
 
 void disk_init()
 {
+  superblock = malloc(sizeof(superblock));
 
+  if (read_sector(0, buffer) != 0)
+  {
+    printf("Erro ao ler setor do super bloco\n");
+    exit(ERROR);
+  }
+
+  strncpy(superblock.id, buffer, 4);
+  if (strncmp(superblock.id, ID, 4) != 0)
+  {
+    printf("ID no disco não reonhecida\n");
+    exit(ERROR);
+  }
+
+  superblock.version = *((WORD *)(buffer + 4));
+  if (superblock.version != VERSION)
+  {
+    printf("Versão no disco não reonhecida\n");
+    exit(ERROR);
+  }
+
+  superblock.superblockSize = *((WORD *)(buffer + 6));
+  superblock.freeBlocksBitmapSize = *((WORD *)(buffer + 8));
+  superblock.freeInodeBitmapSize = *((WORD *)(buffer + 10));
+  superblock.inodeAreaSize = *((WORD *)(buffer + 12));
+  superblock.blockSize = *((WORD *)(buffer + 14));
+  superblock.diskSize = *((DWORD *)(buffer + 16));
+
+  printf(">> T2FS inicializado\n");
+  printf("ID: %s\n", superblock.id);
+  printf("Versao: 0x%x\n", superblock.version);
+  printf("Informacoes do disco (dados em numero de setores):\n");
+  printf("Tamanho super bloco: %hu\n", superblock.superblockSize);
+  printf("Tamanho bitmap blocos livres: %hu\n", superblock.freeBlocksBitmapSize);
+  printf("Tamanho bitmap inodes livres: %hu\n", superblock.freeInodeBitmapSize);
+  printf("Tamanho area inodes: %hu\n", superblock.inodeAreaSize);
+  printf("Tamanho bloco logico: %hu\n", superblock.blockSize);
+  printf("Tamanho area dados: %hu\n", superblock.diskSize);
 }
 
 
@@ -72,7 +128,7 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna o handle 
 FILE2 create2 (char *filename)
 {
 
-  if(!disk_has_initialized)
+  if(!disk_initialized)
   {
     disk_init();
   }
@@ -96,7 +152,7 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna "0" (zero
 -----------------------------------------------------------------------------*/
 int delete2 (char *filename)
 {
-  if(!disk_has_initialized)
+  if(!disk_initialized)
   {
     disk_init();
   }
@@ -126,7 +182,7 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna o handle 
 -----------------------------------------------------------------------------*/
 FILE2 open2 (char *filename)
 {
-  if(!disk_has_initialized)
+  if(!disk_initialized)
   {
     disk_init();
   }
@@ -150,7 +206,7 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna "0" (zero
 -----------------------------------------------------------------------------*/
 int close2 (FILE2 handle)
 {
-  if(!disk_has_initialized)
+  if(!disk_initialized)
   {
     disk_init();
   }
@@ -178,7 +234,7 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna o número
 -----------------------------------------------------------------------------*/
 int read2 (FILE2 handle, char *buffer, int size)
 {
-  if(!disk_has_initialized)
+  if(!disk_initialized)
   {
     disk_init();
   }
@@ -206,7 +262,7 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna o número
 -----------------------------------------------------------------------------*/
 int write2 (FILE2 handle, char *buffer, int size)
 {
-  if(!disk_has_initialized)
+  if(!disk_initialized)
   {
     disk_init();
   }
@@ -253,7 +309,7 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna "0" (zero
 -----------------------------------------------------------------------------*/
 int seek2 (FILE2 handle, DWORD offset)
 {
-  if(!disk_has_initialized)
+  if(!disk_initialized)
   {
     disk_init();
   }
@@ -284,7 +340,7 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna "0" (zero
 -----------------------------------------------------------------------------*/
 int mkdir2 (char *pathname)
 {
-  if(!disk_has_initialized)
+  if(!disk_initialized)
   {
     disk_init();
   }
@@ -316,7 +372,7 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna "0" (zero
 -----------------------------------------------------------------------------*/
 int rmdir2 (char *pathname)
 {
-  if(!disk_has_initialized)
+  if(!disk_initialized)
   {
     disk_init();
   }
@@ -345,7 +401,7 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna o identif
 -----------------------------------------------------------------------------*/
 DIR2 opendir2 (char *pathname)
 {
-  if(!disk_has_initialized)
+  if(!disk_initialized)
   {
     disk_init();
   }
@@ -376,7 +432,7 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna "0" (zero
 -----------------------------------------------------------------------------*/
 int readdir2 (DIR2 handle, DIRENT2 *dentry)
 {
-  if(!disk_has_initialized)
+  if(!disk_initialized)
   {
     disk_init();
   }
@@ -401,7 +457,7 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna "0" (zero
 -----------------------------------------------------------------------------*/
 int closedir2 (DIR2 handle)
 {
-  if(!disk_has_initialized)
+  if(!disk_initialized)
   {
     disk_init();
   }
