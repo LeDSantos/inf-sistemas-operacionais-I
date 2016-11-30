@@ -25,17 +25,24 @@
 #define ERROR -1
 
 #define ID "T2FS"
-#define VERSION 7E02
+#define VERSION 0x7E02
 #define DISK "t2fs_disk.dat"
 
 //#define SECTOR_SIZE 256
 #define SECTOR_COUNT 32768
 #define BLOCK_SIZE 16
-#define BLOCK_COUNT 2048 //(superblock.diskSize / superblock.blockSize), 32768 div 16 = 2048
+#define BLOCK_COUNT 2048 //(superblock->diskSize / superblock->blockSize), 32768 div 16 = 2048
 // #define INODE_COUNT 2048
 // #define INODE_SIZE 64
-#define MAX_FILESIZE superblock.blockSize * ((((superblock.blockSize)*(superblock.blockSize))/16) + ((superblock.blockSize)/4) + 2) //352
+#define MAX_FILESIZE superblock->blockSize * (( ((superblock->blockSize)*(superblock->blockSize))/16) + ((superblock->blockSize)/4) + 2) //352
 #define MAX_OPENFILES 20
+
+// setor onde começa cada area
+#define superblock_sector 0
+#define block_bitmap 1
+#define inode_bitmap 2
+#define inode_area 3
+#define data_area 128
 
 /* disk struct
 // superblock
@@ -47,7 +54,8 @@
 
 static int disk_initialized = 0;
 char buffer[SECTOR_SIZE];
-SB_t superblock;
+SB_t* superblock;
+INO_t* current_dir;
 
 /*
 ** inicializa t2fs
@@ -58,43 +66,46 @@ void disk_init()
 {
   superblock = malloc(sizeof(superblock));
 
-  if (read_sector(0, buffer) != 0)
+  getBitmap2(BITMAP_INODE, 0); //nao faco ideia por que, mas se tirar isso para de funcionar tudo
+  // printf("valor do bitmap inode 0: %d\n", x);
+
+  if (read_sector(superblock_sector, buffer) != 0)
   {
     printf("Erro ao ler setor do super bloco\n");
     exit(ERROR);
   }
 
-  strncpy(superblock.id, buffer, 4);
-  if (strncmp(superblock.id, ID, 4) != 0)
+  strncpy(superblock->id, buffer, 4);
+  if (strncmp(superblock->id, ID, 4) != 0)
   {
-    printf("ID no disco não reonhecida\n");
+    printf("ID no disco nao reonhecida\n");
     exit(ERROR);
   }
 
-  superblock.version = *((WORD *)(buffer + 4));
-  if (superblock.version != VERSION)
+  superblock->version = *((WORD *)(buffer + 4));
+  if (superblock->version != VERSION)
   {
-    printf("Versão no disco não reonhecida\n");
+    printf("Versao no disco nao reonhecida\n");
     exit(ERROR);
   }
 
-  superblock.superblockSize = *((WORD *)(buffer + 6));
-  superblock.freeBlocksBitmapSize = *((WORD *)(buffer + 8));
-  superblock.freeInodeBitmapSize = *((WORD *)(buffer + 10));
-  superblock.inodeAreaSize = *((WORD *)(buffer + 12));
-  superblock.blockSize = *((WORD *)(buffer + 14));
-  superblock.diskSize = *((DWORD *)(buffer + 16));
+  superblock->superblockSize = *((WORD *)(buffer + 6));
+  superblock->freeBlocksBitmapSize = *((WORD *)(buffer + 8));
+  superblock->freeInodeBitmapSize = *((WORD *)(buffer + 10));
+  superblock->inodeAreaSize = *((WORD *)(buffer + 12));
+  superblock->blockSize = *((WORD *)(buffer + 14));
+  superblock->diskSize = *((DWORD *)(buffer + 16));
 
   printf(">> T2FS inicializado\n");
-  printf("ID: %s\n", superblock.id);
-  printf("Versao: 0x%x\n", superblock.version);
+  printf("ID: %s\n", superblock->id);
+  printf("Versao: 0x%x\n", superblock->version);
   printf("Informacoes do disco (dados em numero de setores):\n");
-  printf("Tamanho super bloco: %hu\n", superblock.superblockSize);
-  printf("Tamanho bitmap blocos livres: %hu\n", superblock.freeBlocksBitmapSize);
-  printf("Tamanho bitmap inodes livres: %hu\n", superblock.freeInodeBitmapSize);
-  printf("Tamanho area inodes: %hu\n", superblock.inodeAreaSize);
-  printf("Tamanho bloco logico: %hu\n", superblock.blockSize);
-  printf("Tamanho area dados: %hu\n", superblock.diskSize);
+  printf("Tamanho super bloco: %hu\n", superblock->superblockSize);
+  printf("Tamanho bitmap blocos livres: %hu\n", superblock->freeBlocksBitmapSize);
+  printf("Tamanho bitmap inodes livres: %hu\n", superblock->freeInodeBitmapSize);
+  printf("Tamanho area inodes: %hu\n", superblock->inodeAreaSize);
+  printf("Tamanho bloco logico: %hu\n", superblock->blockSize);
+  printf("Tamanho area dados: %u\n", superblock->diskSize);
 }
 
 
@@ -128,12 +139,18 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna o handle 
 FILE2 create2 (char *filename)
 {
 
-  if(!disk_initialized)
+  /*
+  Criar um arquivo:
+  bitmap blocos livres
+  */
+  int handle;
+
+  if(disk_initialized == 0)
   {
     disk_init();
   }
 
-  if()
+  if(filename = NULL)
   {
     return ERROR;
   }
@@ -152,12 +169,12 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna "0" (zero
 -----------------------------------------------------------------------------*/
 int delete2 (char *filename)
 {
-  if(!disk_initialized)
+  if(disk_initialized == 0)
   {
     disk_init();
   }
 
-  if()
+  if(filename = NULL)
   {
     return ERROR;
   }
@@ -182,12 +199,19 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna o handle 
 -----------------------------------------------------------------------------*/
 FILE2 open2 (char *filename)
 {
-  if(!disk_initialized)
+  if(disk_initialized == 0)
   {
     disk_init();
   }
 
-  if()
+  printf("print dos teste\n");
+  if(read_sector(inode_area, buffer) != 0 ){
+    printf("Erro ao ler setor para abrir arquivo\n");
+  }
+  BYTE handle = *((BYTE *)(buffer));
+  printf("tipo: %x\n", handle);
+
+  if(filename = NULL)
   {
     return ERROR;
   }
@@ -206,12 +230,12 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna "0" (zero
 -----------------------------------------------------------------------------*/
 int close2 (FILE2 handle)
 {
-  if(!disk_initialized)
+  if(disk_initialized == 0)
   {
     disk_init();
   }
 
-  if()
+  if(handle = NULL)
   {
     return ERROR;
   }
@@ -234,15 +258,17 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna o número
 -----------------------------------------------------------------------------*/
 int read2 (FILE2 handle, char *buffer, int size)
 {
-  if(!disk_initialized)
+  if(disk_initialized == 0)
   {
     disk_init();
   }
 
-  if()
+  if(handle = NULL)
   {
     return ERROR;
   }
+
+  int bytesread;
 
   return bytesread;
 }
@@ -262,15 +288,16 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna o número
 -----------------------------------------------------------------------------*/
 int write2 (FILE2 handle, char *buffer, int size)
 {
-  if(!disk_initialized)
+  if(disk_initialized == 0)
   {
     disk_init();
   }
 
-  if()
+  if(handle = NULL)
   {
     return ERROR;
   }
+  int byteswritten;
 
   return byteswritten;
 }
@@ -291,6 +318,7 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna "0" (zero
 int truncate2 (FILE2 handle)
 {
 
+  return SUCCESS;
 }
 
 
@@ -309,12 +337,12 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna "0" (zero
 -----------------------------------------------------------------------------*/
 int seek2 (FILE2 handle, DWORD offset)
 {
-  if(!disk_initialized)
+  if(disk_initialized == 0)
   {
     disk_init();
   }
 
-  if()
+  if(handle = NULL)
   {
     return ERROR;
   }
@@ -340,12 +368,12 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna "0" (zero
 -----------------------------------------------------------------------------*/
 int mkdir2 (char *pathname)
 {
-  if(!disk_initialized)
+  if(disk_initialized == 0)
   {
     disk_init();
   }
 
-  if()
+  if(pathname == NULL)
   {
     return ERROR;
   }
@@ -372,12 +400,12 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna "0" (zero
 -----------------------------------------------------------------------------*/
 int rmdir2 (char *pathname)
 {
-  if(!disk_initialized)
+  if(disk_initialized == 0)
   {
     disk_init();
   }
 
-  if()
+  if(pathname == NULL)
   {
     return ERROR;
   }
@@ -401,15 +429,17 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna o identif
 -----------------------------------------------------------------------------*/
 DIR2 opendir2 (char *pathname)
 {
-  if(!disk_initialized)
+  if(disk_initialized == 0)
   {
     disk_init();
   }
 
-  if()
+  if(pathname == NULL)
   {
     return ERROR;
   }
+
+  int handle;
 
   return handle;
 }
@@ -432,12 +462,12 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna "0" (zero
 -----------------------------------------------------------------------------*/
 int readdir2 (DIR2 handle, DIRENT2 *dentry)
 {
-  if(!disk_initialized)
+  if(disk_initialized == 0)
   {
     disk_init();
   }
 
-  if()
+  if(handle = NULL)
   {
     setInvalid(dentry);
     return ERROR;
@@ -457,12 +487,12 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna "0" (zero
 -----------------------------------------------------------------------------*/
 int closedir2 (DIR2 handle)
 {
-  if(!disk_initialized)
+  if(disk_initialized == 0)
   {
     disk_init();
   }
 
-  if()
+  if(handle = NULL)
   {
     return ERROR;
   }
