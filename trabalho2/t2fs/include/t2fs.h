@@ -14,9 +14,9 @@
 typedef int FILE2;
 typedef int DIR2;
 
-typedef unsigned char BYTE;
-typedef unsigned short int WORD;
-typedef unsigned int DWORD;
+typedef unsigned char BYTE;       //1
+typedef unsigned short int WORD;  //2
+typedef unsigned int DWORD;       //4
 
 #pragma pack(push, 1)
 

@@ -30,11 +30,11 @@
 
 //#define SECTOR_SIZE 256
 #define SECTOR_COUNT 32768
-#define BLOCK_SIZE 16
+#define BLOCK_SIZE 16*RECORD_SIZE
 #define BLOCK_COUNT 2048 //(superblock->diskSize / superblock->blockSize), 32768 div 16 = 2048
 // #define INODE_COUNT 2048
-// #define INODE_SIZE 64
-#define MAX_FILESIZE superblock->blockSize * (( ((superblock->blockSize)*(superblock->blockSize))/16) + ((superblock->blockSize)/4) + 2) //352
+#define RECORD_SIZE 64
+#define MAX_FILESIZE 352 //superblock->blockSize * (( ((superblock->blockSize)*(superblock->blockSize))/16) + ((superblock->blockSize)/4) + 2)
 #define MAX_OPENFILES 20
 
 // setor onde começa cada area
@@ -52,15 +52,42 @@
 // data
 */
 
+typedef struct directory_struct DIR_t;
+struct directory_struct {
+    char name[32];
+    DIR_t* pai;
+    DIR_t* filho;
+    DIR_t* irmao;
+    REC_t* record;
+};
+
+DIR_t root;
+
 static int disk_initialized = 0;
 char buffer[SECTOR_SIZE];
 SB_t* superblock;
-INO_t* current_dir;
+REC_t* current_record;
+DIR_t* current_dir;
+
 
 /*
 ** inicializa t2fs
 ** criacao do superbloco
 */
+
+void disk_info()
+{
+  printf("\n\n>> T2FS inicializado\n");
+  printf("ID: %s\n", superblock->id);
+  printf("Versao: 0x%x\n", superblock->version);
+  printf("Informacoes do disco (dados em numero de setores):\n");
+  printf("Tamanho super bloco: %hu\n", superblock->superblockSize);
+  printf("Tamanho bitmap blocos livres: %hu\n", superblock->freeBlocksBitmapSize);
+  printf("Tamanho bitmap inodes livres: %hu\n", superblock->freeInodeBitmapSize);
+  printf("Tamanho area inodes: %hu\n", superblock->inodeAreaSize);
+  printf("Tamanho bloco logico: %hu\n", superblock->blockSize);
+  printf("Tamanho area dados: %u\n\n\n", superblock->diskSize);
+}
 
 void disk_init()
 {
@@ -96,22 +123,97 @@ void disk_init()
   superblock->blockSize = *((WORD *)(buffer + 14));
   superblock->diskSize = *((DWORD *)(buffer + 16));
 
-  printf(">> T2FS inicializado\n");
-  printf("ID: %s\n", superblock->id);
-  printf("Versao: 0x%x\n", superblock->version);
-  printf("Informacoes do disco (dados em numero de setores):\n");
-  printf("Tamanho super bloco: %hu\n", superblock->superblockSize);
-  printf("Tamanho bitmap blocos livres: %hu\n", superblock->freeBlocksBitmapSize);
-  printf("Tamanho bitmap inodes livres: %hu\n", superblock->freeInodeBitmapSize);
-  printf("Tamanho area inodes: %hu\n", superblock->inodeAreaSize);
-  printf("Tamanho bloco logico: %hu\n", superblock->blockSize);
-  printf("Tamanho area dados: %u\n", superblock->diskSize);
+  disk_info();
+
+  // verificar o que já existe no disco e estrutura de diretorios
+
+  // inicializar estruturas auxiliares para percorrer diretorios
+  current_dir = malloc(sizeof(DIR_t));
+
+  char auxname[] = "root";
+  strncpy(root.name, auxname, 4);
+  root.pai = NULL;
+  root.irmao = NULL;
+  root.filho = NULL;
+  root.record = NULL;
+
+  DIR_t* auxdir = malloc(sizeof(DIR_t));
+  auxdir->pai = NULL;
+  auxdir->irmao = NULL;
+  auxdir->filho = NULL;
+  auxdir->record = NULL;
+
+  if(read_sector(data_area, buffer) != 0 )
+  {
+    printf("Erro ao ler setor de dados: 0\n");
+  }
+
+  current_record = malloc(sizeof(RECORD_SIZE + 1));
+  current_record->TypeVal = -1;
+
+  printf("Conteudo existente no disco:\n\n");
+
+  int iterator = 0;       //um setor pode ter no maximo 4 records (64 * 4 = 256)
+  int read_x_times = 0;   //iterador pra ler setores contiguamente, incrementado toda vez que faz um read sector
+  while (iterator < 4)
+  {
+    if (iterator == 3)
+    {
+      iterator = 0;
+      ++read_x_times;
+      if(read_sector(data_area + read_x_times, buffer) != 0)
+      {
+        printf("Erro ao ler setor do de dados começando no setor: %d\n", read_x_times);
+      }
+    }
+  current_record->TypeVal = *((BYTE *)(buffer + iterator*64));
+  strncpy(current_record->name, buffer + iterator*64 + 1, 32);
+  current_record->blocksFileSize = *((DWORD *)(buffer + iterator*64 + 33));
+  current_record->bytesFileSize = *((DWORD *)(buffer + iterator*64 + 37));
+  current_record->inodeNumber = *((int *)(buffer + iterator*64 + 41));
+
+  if (current_record->TypeVal == 0x00)
+  {
+    break;
+  }
+
+  printf("name arquivo: %s\n", current_record->name);
+  printf("tipo: %x                >>|1: arquivo, 2: dir, 3: invalido|\n", current_record->TypeVal);
+  printf("blocks file size: %u\n", current_record->blocksFileSize);
+  printf("bytes file size: %u\n", current_record->bytesFileSize);
+  printf("inode number: %d\n\n", current_record->inodeNumber);
+
+  // adicionar diretorios na lista
+  if (current_record->TypeVal == 0x02)
+  {
+
+    auxdir->pai = &root;
+    auxdir->record = current_record;
+    strncpy(auxdir->name, current_record->name, 32);
+    root.filho = auxdir;
+  }
+
+  ++iterator;
+  }
+
+  current_dir = &root;
+  printf("Diretorio raiz: %s\n", current_dir->name);
+
+  current_dir = root.filho;
+  printf("subdiretorios na raiz:\n", current_dir->name);
+  do
+  {
+    printf("%s\n", current_dir->name);
+    current_dir = current_dir->irmao;
+  } while(current_dir);
+
 }
 
 
 int identify2 (char *name, int size)
 {
   printf("\nGustavo Madeira Santana - 252853\nCristiano Salla Lunardi - 240508\n\n");
+  disk_info();
 
   if(size < sizeof(GROUP))
   {
@@ -204,12 +306,7 @@ FILE2 open2 (char *filename)
     disk_init();
   }
 
-  printf("print dos teste\n");
-  if(read_sector(inode_area, buffer) != 0 ){
-    printf("Erro ao ler setor para abrir arquivo\n");
-  }
-  BYTE handle = *((BYTE *)(buffer));
-  printf("tipo: %x\n", handle);
+  int handle = 0;
 
   if(filename = NULL)
   {
