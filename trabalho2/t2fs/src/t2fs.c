@@ -138,6 +138,20 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna o handle 
 -----------------------------------------------------------------------------*/
 FILE2 create2 (char *filename)
 {
+	REC_t recT;
+
+	recT.TypeVal = 0x01; //indica que é arquivo regular
+	recT.name = filename; //nome do arquivo
+	recT.blocksFileSize = 0; /* Tamanho do arquivo, expresso em número de blocos de dados */
+    recT.bytesFileSize = 0;  /* Tamanho do arquivo. Expresso em número de bytes.          */
+    
+	INO_t inoT;
+
+	recT.inodeNumber;
+	//atributos do inode
+	//{.dataPtr[2], singleIndPtr, doubleIndPtr  };
+
+
 
   /*
   Criar um arquivo:
