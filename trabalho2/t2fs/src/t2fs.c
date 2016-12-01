@@ -16,6 +16,7 @@
 #include <string.h>
 
 #include "../include/t2fs.h"
+#include "../include/functions.h"
 #include "../include/apidisk.h"
 #include "../include/bitmap2.h"
 
@@ -61,13 +62,12 @@ struct directory_struct {
     REC_t* record;
 };
 
-DIR_t root;
-
 static int disk_initialized = 0;
 char buffer[SECTOR_SIZE];
 SB_t* superblock;
 REC_t* current_record;
 DIR_t* current_dir;
+DIR_t root;
 
 
 /*
@@ -77,7 +77,7 @@ DIR_t* current_dir;
 
 void disk_info()
 {
-  printf("\n\n>> T2FS inicializado\n");
+  printf("\n\n>> T2FS inicializando...\n");
   printf("ID: %s\n", superblock->id);
   printf("Versao: 0x%x\n", superblock->version);
   printf("Informacoes do disco (dados em numero de setores):\n");
@@ -183,7 +183,7 @@ void disk_init()
   printf("bytes file size: %u\n", current_record->bytesFileSize);
   printf("inode number: %d\n\n", current_record->inodeNumber);
 
-  // adicionar diretorios na lista
+  // adicionar diretorios na estrutura para percorrer diretorios
   if (current_record->TypeVal == 0x02)
   {
 
@@ -197,7 +197,7 @@ void disk_init()
   }
 
   current_dir = &root;
-  printf("Diretorio raiz: %s\n", current_dir->name);
+  printf("Diretorio raiz: %s : '/'\n", current_dir->name);
 
   current_dir = root.filho;
   printf("subdiretorios na raiz:\n", current_dir->name);
@@ -207,6 +207,7 @@ void disk_init()
     current_dir = current_dir->irmao;
   } while(current_dir);
 
+  printf("\n\n>> T2FS inicializado!\n\n");
 }
 
 
@@ -304,6 +305,28 @@ FILE2 open2 (char *filename)
   if(disk_initialized == 0)
   {
     disk_init();
+  }
+
+  char *path[25];
+  int dirs = path_parser(filename, &path);
+
+  printf("dirs found:\n");
+
+  int i;
+  for (i = 0; i < dirs; ++i)
+  {
+    printf("%s\n", path[i]);
+  }
+
+  printf("Blocos ocupados:\n");
+  int ii = 0;
+  int bmp;
+  for (ii = 0; ii < 1250; ++ii)
+  {
+     bmp = getBitmap2(BITMAP_INODE, ii);
+     if (bmp == 1) printf("inode %d: %d\n", ii, bmp);
+     bmp = getBitmap2(BITMAP_DADOS, ii);
+     if (bmp == 1) printf("dados %d: %d\n", ii, bmp);
   }
 
   int handle = 0;
