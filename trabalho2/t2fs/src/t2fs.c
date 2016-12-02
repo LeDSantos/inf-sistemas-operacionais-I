@@ -29,12 +29,9 @@
 #define VERSION 0x7E02
 #define DISK "t2fs_disk.dat"
 
-//#define SECTOR_SIZE 256
-#define SECTOR_COUNT 32768
-#define BLOCK_SIZE 16*RECORD_SIZE
-#define BLOCK_COUNT 2048 //(superblock->diskSize / superblock->blockSize), 32768 div 16 = 2048
-// #define INODE_COUNT 2048
-#define RECORD_SIZE 64
+// #define SECTOR_COUNT 32768
+#define BLOCK_SIZE 16*SECTOR_SIZE
+// #define BITMAP_COUNT 2048 //(superblock->diskSize / superblock->blockSize), 32768 div 16 = 2048
 #define MAX_FILESIZE 352 //superblock->blockSize * (( ((superblock->blockSize)*(superblock->blockSize))/16) + ((superblock->blockSize)/4) + 2)
 #define MAX_OPENFILES 20
 
@@ -45,14 +42,15 @@
 #define inode_area 3
 #define data_area 128
 
-/* disk struct
-// superblock
-// bitmap blocks
-// bitmap inodes
-// inodes
-// data
-*/
+typedef struct t2fs_superbloco SB_t;
+typedef struct t2fs_record REC_t;
+typedef struct t2fs_inode INO_t;
 
+/*
+** struct para percorrer diretorios mais rapidamente
+** root não tem pai e tem sub como filho
+** outros diretorios em root serao irmaos de sub e terao root como pai
+*/
 typedef struct directory_struct DIR_t;
 struct directory_struct {
     char name[32];
@@ -63,12 +61,11 @@ struct directory_struct {
 };
 
 static int disk_initialized = 0;
-char buffer[SECTOR_SIZE];
+unsigned char buffer[SECTOR_SIZE];
 SB_t* superblock;
 REC_t* current_record;
 DIR_t* current_dir;
 DIR_t root;
-
 
 /*
 ** inicializa t2fs
@@ -86,17 +83,14 @@ void disk_info()
   printf("Tamanho bitmap inodes livres: %hu\n", superblock->freeInodeBitmapSize);
   printf("Tamanho area inodes: %hu\n", superblock->inodeAreaSize);
   printf("Tamanho bloco logico: %hu\n", superblock->blockSize);
-  printf("Tamanho area dados: %u\n\n\n", superblock->diskSize);
+  printf("Tamanho area dados: %u\n\n", superblock->diskSize);
 }
 
 void disk_init()
 {
-  superblock = malloc(sizeof(superblock));
+  superblock = malloc(sizeof(SB_t));
 
-  getBitmap2(BITMAP_INODE, 0); //nao faco ideia por que, mas se tirar isso para de funcionar tudo
-  // printf("valor do bitmap inode 0: %d\n", x);
-
-  if (read_sector(superblock_sector, buffer) != 0)
+  if (read_sector(0, buffer) != 0)
   {
     printf("Erro ao ler setor do super bloco\n");
     exit(ERROR);
@@ -125,8 +119,7 @@ void disk_init()
 
   disk_info();
 
-  // verificar o que já existe no disco e estrutura de diretorios
-
+  // verificar o que já existe no disco
   // inicializar estruturas auxiliares para percorrer diretorios
   current_dir = malloc(sizeof(DIR_t));
 
@@ -148,7 +141,7 @@ void disk_init()
     printf("Erro ao ler setor de dados: 0\n");
   }
 
-  current_record = malloc(sizeof(RECORD_SIZE + 1));
+  current_record = malloc(16*sizeof(int));
   current_record->TypeVal = -1;
 
   printf("Conteudo existente no disco:\n\n");
@@ -177,7 +170,7 @@ void disk_init()
     break;
   }
 
-  printf("name arquivo: %s\n", current_record->name);
+  printf("nome: %s\n", current_record->name);
   printf("tipo: %x                >>|1: arquivo, 2: dir, 3: invalido|\n", current_record->TypeVal);
   printf("blocks file size: %u\n", current_record->blocksFileSize);
   printf("bytes file size: %u\n", current_record->bytesFileSize);
@@ -186,7 +179,6 @@ void disk_init()
   // adicionar diretorios na estrutura para percorrer diretorios
   if (current_record->TypeVal == 0x02)
   {
-
     auxdir->pai = &root;
     auxdir->record = current_record;
     strncpy(auxdir->name, current_record->name, 32);
@@ -200,21 +192,30 @@ void disk_init()
   printf("Diretorio raiz: %s : '/'\n", current_dir->name);
 
   current_dir = root.filho;
-  printf("subdiretorios na raiz:\n", current_dir->name);
+  printf("Subdiretorios na raiz:\n", current_dir->name);
   do
   {
-    printf("%s\n", current_dir->name);
+    printf("%s\n\n", current_dir->name);
     current_dir = current_dir->irmao;
   } while(current_dir);
+
+  printf("Bitmaps ocupados:\n");
+  int ii = 0;
+  int bmp;
+  for (ii = 0; ii < 2048; ++ii)
+  {
+     bmp = getBitmap2(BITMAP_INODE, ii);
+     if (bmp == 1) printf("inode %d esta ocupado\n", ii);
+     bmp = getBitmap2(BITMAP_DADOS, ii);
+     if (bmp == 1) printf("bloco %d esta ocupado\n", ii);
+  }
 
   printf("\n\n>> T2FS inicializado!\n\n");
 }
 
-
 int identify2 (char *name, int size)
 {
   printf("\nGustavo Madeira Santana - 252853\nCristiano Salla Lunardi - 240508\n\n");
-  disk_info();
 
   if(size < sizeof(GROUP))
   {
@@ -239,28 +240,12 @@ Entra:  filename -> nome do arquivo a ser criado.
 Saída:  Se a operação foi realizada com sucesso, a função retorna o handle do arquivo (número positivo).
   Em caso de erro, deve ser retornado um valor negativo.
 -----------------------------------------------------------------------------*/
+  /*
 FILE2 create2 (char *filename)
 {
-	REC_t recT;
-
-	recT.TypeVal = 0x01; //indica que é arquivo regular
-	recT.name = filename; //nome do arquivo
-	recT.blocksFileSize = 0; /* Tamanho do arquivo, expresso em número de blocos de dados */
-    recT.bytesFileSize = 0;  /* Tamanho do arquivo. Expresso em número de bytes.          */
-    
-	INO_t inoT;
-
-	recT.inodeNumber;
-	//atributos do inode
-	//{.dataPtr[2], singleIndPtr, doubleIndPtr  };
-
-
-
-  /*
   Criar um arquivo:
   bitmap blocos livres
-  */
-  int handle;
+
 
   if(disk_initialized == 0)
   {
@@ -272,9 +257,46 @@ FILE2 create2 (char *filename)
     return ERROR;
   }
 
-  return handle;
-}
+  //procura uma posicao fazia no setor dos inodes.
+  int numberInode = searchBitmap2(BITMAP_INODE, 0);
+  if(numberInode < 0)
+  {
+    return ERROR;
+  }
+  //seta a posicao no bitmap do inode ocupado.
+  setBitmap2 (BITMAP_INODE, numberInode, 1);
 
+  REC_t recT;
+
+  recT.TypeVal = 0x01; //indica que é arquivo regular
+  recT.name = filename; //nome do arquivo
+  recT.blocksFileSize = 1; // Tamanho do arquivo, expresso em número de blocos de dados
+  recT.bytesFileSize = 0;  // Tamanho do arquivo. Expresso em número de bytes
+
+  INO_t inoT;
+
+  recT.inodeNumber = numberInode;
+
+  procura um bloco de dados livre para o inode apontar
+  int dataBlock = searchBitmap2(BITMAP_DADOS, 0);
+  if(dataBlock < 0)
+  {
+    return ERROR;
+  }
+  //coloca a posicao do bloco de dados como ocupada
+  setBitmap2(BITMAP_DADOS, dataBlock, 1);
+
+  inoT.dataPtr[0] = dataBlock*16;
+  inoT.dataPtr[1] = 0x00;
+  inoT.singleIndPtr = 0x00;
+  inT.doubleIndPtr = 0x00;
+
+  //FALTAAA
+  // i-node escrever na área de i-node
+  // record no bloco de diretorio corrente
+  return numberInode;
+}
+*/
 /*-----------------------------------------------------------------------------
 Função: Apagar um arquivo do disco.
   O nome do arquivo a ser apagado é aquele informado pelo parâmetro "filename".
@@ -321,28 +343,12 @@ FILE2 open2 (char *filename)
     disk_init();
   }
 
-  char *path[25];
-  int dirs = path_parser(filename, &path);
-
-  printf("dirs found:\n");
-
-  int i;
-  for (i = 0; i < dirs; ++i)
+  if(path_exists(filename) == -1)
   {
-    printf("%s\n", path[i]);
+    printf("deu ruim\n");
+    return ERROR;
   }
-
-  printf("Blocos ocupados:\n");
-  int ii = 0;
-  int bmp;
-  for (ii = 0; ii < 1250; ++ii)
-  {
-     bmp = getBitmap2(BITMAP_INODE, ii);
-     if (bmp == 1) printf("inode %d: %d\n", ii, bmp);
-     bmp = getBitmap2(BITMAP_DADOS, ii);
-     if (bmp == 1) printf("dados %d: %d\n", ii, bmp);
-  }
-
+  printf("deu boa\n");
   int handle = 0;
 
   if(filename = NULL)
@@ -629,6 +635,64 @@ int closedir2 (DIR2 handle)
   if(handle = NULL)
   {
     return ERROR;
+  }
+
+  return SUCCESS;
+}
+
+
+int path_exists(char *filename)
+{
+  char *path[25];
+  int dirs = path_parser(filename, &path);
+
+  printf("possible dirs found: %d\n", dirs);
+
+  int i;
+  for (i = 0; i < dirs; ++i)
+  {
+    printf("%s\n", path[i]);
+  }
+
+  i = 0;
+  int encontrou = 0;
+  current_dir = root.filho;
+
+  char newnome[] = "asds";
+  DIR_t* newdir = malloc(sizeof(DIR_t));
+  strncpy(newdir->name, newnome, 4);
+  newdir->pai = &root;
+  current_dir->irmao = newdir;
+
+  char* searching_for1;
+  char* searching_for2;
+
+  int number_dirs;
+  for (number_dirs= 0; number_dirs < dirs; ++number_dirs)
+  {
+    do
+    {
+      searching_for1 = path[i];
+      searching_for2 = current_dir->name;
+      printf("searching for: %s agains %s ...\n\n", searching_for1, searching_for2);
+      if (strcmp(searching_for1, searching_for2) == 0)
+      {
+        encontrou = 1;
+        break;
+      }
+      printf("not found, next\n");
+      current_dir = current_dir->irmao;
+    } while(current_dir);
+
+    if (encontrou == 0)
+    {
+      printf("path incorreto, \"%s\" não existe\n", searching_for1);
+      return ERROR;
+    }
+
+      printf("path correto, \"%s\" existe\n", searching_for1);
+      encontrou = 0;
+      i++;
   }
 
   return SUCCESS;

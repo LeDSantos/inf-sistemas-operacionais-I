@@ -7,10 +7,13 @@
 #include "../include/apidisk.h"
 #include "../include/bitmap2.h"
 
+/*
+** faz o parse de um path e retorna cada nome de diretorio/arquivo individualmente
+*/
 int path_parser(char* path, char* pathfound)
 {
   char* token;
-  char aux[500];
+  char aux[2048];
   strcpy(aux, path);
 
   printf ("Path to parse: \"%s\"\n", path);
@@ -23,9 +26,10 @@ int path_parser(char* path, char* pathfound)
     ++char_size;
   }
 
-  char_size = 0;
   const char *paths[char_size];
   strcpy(aux, path);
+
+  char_size = 0;
   token = strtok (aux, "/");
   while (token != NULL)
   {

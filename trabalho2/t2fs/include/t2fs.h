@@ -21,7 +21,7 @@ typedef unsigned int DWORD;       //4
 #pragma pack(push, 1)
 
 /** Superbloco */
-typedef struct t2fs_superbloco {
+struct t2fs_superbloco {
     char    id[4];          	/* Identificação do sistema de arquivo. É formado pelas letras “T2FS”.             */
     WORD    version;        	/* Versão atual desse sistema de arquivos: (valor fixo 0x7E0=2016; 2=2º semestre). */
     WORD    superblockSize; 	/* Quantidade de setores que formam o superbloco.                                  */
@@ -30,23 +30,23 @@ typedef struct t2fs_superbloco {
     WORD    inodeAreaSize;	/* Quantidade de setores usados para armazenar os i-nodes do sistema.                 */
     WORD    blockSize;		/* Quantidade de setores que formam um bloco lógico.                                  */
     DWORD   diskSize;		/* Quantidade total de setores na partição T2FS. Inclui o superbloco, áreas de bitmap, área de i-node e blocos de dados */
-} SB_t;
+};
 
 /** Registro de diretório (entrada de diretório) */
-typedef struct t2fs_record {
+struct t2fs_record {
     BYTE    TypeVal;        /* Tipo da entrada. Indica se o registro é inválido (0x00), arquivo (0x01) ou diretório (0x02) */
     char    name[32];       /* Nome do arquivo. : string com caracteres ASCII (0x21 até 0x7A), case sensitive.             */
     DWORD   blocksFileSize; /* Tamanho do arquivo, expresso em número de blocos de dados */
     DWORD   bytesFileSize;  /* Tamanho do arquivo. Expresso em número de bytes.          */
     int     inodeNumber;    /* Número do i-node (se inválido, recebe INVALID_PTR)        */
-} REC_t;
+};
 
 /** i-node */
-typedef struct t2fs_inode {
+struct t2fs_inode {
     int     dataPtr[2];	    /* Dois ponteiros diretos (little endian). Se inválido, recebe INVALID_PTR.        */
     int     singleIndPtr;   /* Ponteiro de indireção simples (little endian). Se inválido, recebe INVALID_PTR. */
     int     doubleIndPtr;   /* Ponteiro de indireção dupla (little endian) Se inválido, recebe INVALID_PTR.    */
-} INO_t;
+};
 
 /** Registro com as informações da entrada de diretório, lida com readdir2 */
 #define MAX_FILE_NAME_SIZE 255
