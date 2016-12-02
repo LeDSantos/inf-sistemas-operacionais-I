@@ -16,7 +16,7 @@
 #include <string.h>
 
 #include "../include/t2fs.h"
-#include "../include/functions.h"
+// #include "../include/functions.h"
 #include "../include/apidisk.h"
 #include "../include/bitmap2.h"
 
@@ -47,25 +47,44 @@ typedef struct t2fs_record REC_t;
 typedef struct t2fs_inode INO_t;
 
 /*
-** struct para percorrer diretorios mais rapidamente
+** struct para armazenar estrutura de diretorios
+** facilita para percorrer diretorios
 ** root não tem pai e tem sub como filho
 ** outros diretorios em root serao irmaos de sub e terao root como pai
 */
 typedef struct directory_struct DIR_t;
 struct directory_struct {
-    char name[32];
-    DIR_t* pai;
-    DIR_t* filho;
-    DIR_t* irmao;
-    REC_t* record;
+  char name[32];
+  DIR_t*  pai;
+  DIR_t*  filho;
+  DIR_t*  irmao;
+  REC_t*  record;
+};
+
+/*
+** struct para armazenar informacoes dos arquivos abertos
+**  files_open: numero de arquivos abertos;
+**  inode: inode do arquivo atual
+**  nextfile: proximo arquivo na lista
+*/
+typedef struct open_files_struct OPEN_t;
+struct open_files_struct {
+  int     filesopen;
+  int     inode;
+  char    name[32];
+  OPEN_t* nextfile;
 };
 
 static int disk_initialized = 0;
 unsigned char buffer[SECTOR_SIZE];
+unsigned char blockbuffer[16*SECTOR_SIZE];
 SB_t* superblock;
+INO_t* current_inode;
 REC_t* current_record;
 DIR_t* current_dir;
 DIR_t root;
+OPEN_t* current_file;
+OPEN_t open_files;
 
 /*
 ** inicializa t2fs
@@ -119,6 +138,10 @@ void disk_init()
 
   disk_info();
 
+  open_files.filesopen = 0;
+  open_files.inode = -1;
+  open_files.nextfile = -1;
+
   // verificar o que já existe no disco
   // inicializar estruturas auxiliares para percorrer diretorios
   current_dir = malloc(sizeof(DIR_t));
@@ -128,7 +151,14 @@ void disk_init()
   root.pai = NULL;
   root.irmao = NULL;
   root.filho = NULL;
-  root.record = NULL;
+
+  REC_t *rootrecord = malloc(16*sizeof(int));
+  rootrecord->TypeVal = 0x02;
+  strncpy(rootrecord->name, auxname, 4);
+  rootrecord->blocksFileSize = 1;
+  rootrecord->bytesFileSize = -1;
+  rootrecord->inodeNumber = 0;
+  root.record = rootrecord;
 
   DIR_t* auxdir = malloc(sizeof(DIR_t));
   auxdir->pai = NULL;
@@ -142,7 +172,7 @@ void disk_init()
   }
 
   current_record = malloc(16*sizeof(int));
-  current_record->TypeVal = -1;
+  current_record = NULL;
 
   printf("Conteudo existente no disco:\n\n");
 
@@ -159,40 +189,43 @@ void disk_init()
         printf("Erro ao ler setor do de dados começando no setor: %d\n", read_x_times);
       }
     }
-  current_record->TypeVal = *((BYTE *)(buffer + iterator*64));
-  strncpy(current_record->name, buffer + iterator*64 + 1, 32);
-  current_record->blocksFileSize = *((DWORD *)(buffer + iterator*64 + 33));
-  current_record->bytesFileSize = *((DWORD *)(buffer + iterator*64 + 37));
-  current_record->inodeNumber = *((int *)(buffer + iterator*64 + 41));
 
-  if (current_record->TypeVal == 0x00)
-  {
-    break;
-  }
+    REC_t* auxrecord = malloc(16*sizeof(int));
+    auxrecord->TypeVal = *((BYTE *)(buffer + iterator*64));
+    strncpy(auxrecord->name, buffer + iterator*64 + 1, 32);
+    auxrecord->blocksFileSize = *((DWORD *)(buffer + iterator*64 + 33));
+    auxrecord->bytesFileSize = *((DWORD *)(buffer + iterator*64 + 37));
+    auxrecord->inodeNumber = *((int *)(buffer + iterator*64 + 41));
 
-  printf("nome: %s\n", current_record->name);
-  printf("tipo: %x                >>|1: arquivo, 2: dir, 3: invalido|\n", current_record->TypeVal);
-  printf("blocks file size: %u\n", current_record->blocksFileSize);
-  printf("bytes file size: %u\n", current_record->bytesFileSize);
-  printf("inode number: %d\n\n", current_record->inodeNumber);
+    current_record = auxrecord;
+    if (auxrecord->TypeVal == 0x00)
+    {
+      break;
+    }
 
-  // adicionar diretorios na estrutura para percorrer diretorios
-  if (current_record->TypeVal == 0x02)
-  {
-    auxdir->pai = &root;
-    auxdir->record = current_record;
-    strncpy(auxdir->name, current_record->name, 32);
-    root.filho = auxdir;
-  }
+    printf("nome: %s\n", auxrecord->name);
+    printf("tipo: %x                >>|1: arquivo, 2: dir, 3: invalido|\n", auxrecord->TypeVal);
+    printf("blocks file size: %u\n", auxrecord->blocksFileSize);
+    printf("bytes file size: %u\n", auxrecord->bytesFileSize);
+    printf("inode number: %d\n\n", auxrecord->inodeNumber);
 
-  ++iterator;
+    // adicionar diretorios na estrutura para percorrer diretorios
+    if (auxrecord->TypeVal == 0x02)
+    {
+      auxdir->pai = &root;
+      auxdir->record = auxrecord;
+      strncpy(auxdir->name, auxrecord->name, 32);
+      root.filho = auxdir;
+    }
+
+    ++iterator;
   }
 
   current_dir = &root;
   printf("Diretorio raiz: %s : '/'\n", current_dir->name);
 
   current_dir = root.filho;
-  printf("Subdiretorios na raiz:\n", current_dir->name);
+  printf("Subdiretorios na raiz: \n");
   do
   {
     printf("%s\n\n", current_dir->name);
@@ -343,16 +376,12 @@ FILE2 open2 (char *filename)
     disk_init();
   }
 
-  if(path_exists(filename) == -1)
+  // handle recebe posicão do vetor open_files que tem inode do arquivo a ser aberto
+  int handle = path_exists(filename);
+  printf("handle: %d\narquivos abertos: %d\n", handle, open_files.filesopen);
+  if(handle < 0)
   {
-    printf("deu ruim\n");
-    return ERROR;
-  }
-  printf("deu boa\n");
-  int handle = 0;
-
-  if(filename = NULL)
-  {
+    //não existe diretorio ou arquivo
     return ERROR;
   }
 
@@ -641,59 +670,232 @@ int closedir2 (DIR2 handle)
 }
 
 
-int path_exists(char *filename)
+int path_exists(char* filename)
 {
+  if(!filename)
+  {
+    return ERROR;
+  }
+
   char *path[25];
   int dirs = path_parser(filename, &path);
 
-  printf("possible dirs found: %d\n", dirs);
-
+  printf("possiveis diretorios: %d   ", dirs);
   int i;
   for (i = 0; i < dirs; ++i)
   {
-    printf("%s\n", path[i]);
+    printf(">> %s  ", path[i]);
   }
 
   i = 0;
   int encontrou = 0;
   current_dir = root.filho;
 
-  char newnome[] = "asds";
-  DIR_t* newdir = malloc(sizeof(DIR_t));
-  strncpy(newdir->name, newnome, 4);
-  newdir->pai = &root;
-  current_dir->irmao = newdir;
+  DIR_t* found;
 
   char* searching_for1;
+  char* searching_for1_father;
   char* searching_for2;
 
-  int number_dirs;
-  for (number_dirs= 0; number_dirs < dirs; ++number_dirs)
+  int iterator;
+  for (iterator = 0; iterator < dirs; ++iterator)
   {
     do
     {
       searching_for1 = path[i];
+      searching_for1_father = current_dir->pai->name;
       searching_for2 = current_dir->name;
-      printf("searching for: %s agains %s ...\n\n", searching_for1, searching_for2);
+      found = current_dir->pai;
+      printf("\nprocurando por: %s dentro de %s ...\n", searching_for1, searching_for1_father);
       if (strcmp(searching_for1, searching_for2) == 0)
       {
         encontrou = 1;
         break;
       }
-      printf("not found, next\n");
       current_dir = current_dir->irmao;
     } while(current_dir);
 
     if (encontrou == 0)
     {
-      printf("path incorreto, \"%s\" não existe\n", searching_for1);
-      return ERROR;
-    }
+      printf("%s nao e um diretorio\n", path[i]);
+      current_dir = found;
+      int foundinode = get_file_inode(path[i]);
+      return foundinode;
+    } else if (current_dir->filho == NULL && iterator < dirs)
+      {
+      printf("\"%s\" encontrado! e nao tem subdiretorios\n", searching_for1);
+      int foundinode = get_file_inode(path[i+1]);
+      return foundinode;
+      }
 
-      printf("path correto, \"%s\" existe\n", searching_for1);
-      encontrou = 0;
-      i++;
+    encontrou = 0;
+    i++;
+    current_dir = current_dir->filho;
   }
 
   return SUCCESS;
+}
+
+int path_parser(char* path, char* pathfound)
+{
+  char* token;
+  char aux[2048];
+  strcpy(aux, path);
+
+  printf ("Path: \"%s\"\n", path);
+
+  int char_size = 1;
+  token = strtok (aux, "/");
+  while (token != NULL)
+  {
+    token = strtok (NULL, "/");
+    ++char_size;
+  }
+
+  const char *paths[char_size];
+  strcpy(aux, path);
+
+  char_size = 0;
+  token = strtok (aux, "/");
+  while (token != NULL)
+  {
+    // printf("token: %s\n", token);
+    paths[char_size] = token;
+    ++char_size;
+    token = strtok (NULL, "/");
+  }
+
+  strcpy(pathfound, paths);
+
+  return char_size;
+}
+
+int get_file_inode(char *filename)
+{
+  // pegando o numero do inode do diretorio atual
+  printf("procurando por \"%s\" como arquivo em %s\n", filename, current_dir->name);
+  int dir_inode = current_dir->record->inodeNumber;
+  int sector_to_read;
+  div_t output = div(dir_inode, 256);
+  sector_to_read = inode_area + output.quot;
+
+  printf("inode area sector: %d\n", inode_area);
+  printf("sector to read: %d\n", sector_to_read);
+  printf("dir inode number: %d\n", dir_inode);
+
+  // lendo inode do diretorio atual
+  read_sector(sector_to_read, buffer);
+
+  INO_t* inode_aux = malloc(sizeof(INO_t));
+  inode_aux->dataPtr[0] = *((int *)(buffer + dir_inode*16));
+  inode_aux->dataPtr[1] = *((int *)(buffer + dir_inode*16 + 4));
+  inode_aux->singleIndPtr = *((int *)(buffer + dir_inode*16 + 8));
+  inode_aux->doubleIndPtr = *((int *)(buffer + dir_inode*16 + 12));
+  current_inode = inode_aux;
+  printf("pointers: %d %d %d %d\n", inode_aux->dataPtr[0], inode_aux->dataPtr[1], inode_aux->singleIndPtr, inode_aux->doubleIndPtr);
+
+  // ler bloco de dados do diretorio atual para procurar arquivo
+
+  sector_to_read = data_area + inode_aux->dataPtr[0];
+  printf("%d\n", sector_to_read);
+
+  read_block(sector_to_read);
+
+  current_record = NULL;
+  REC_t* auxrecord = malloc(16*sizeof(int));
+  int iterator = 0;       //um bloco pode ter no maximo 64 records (64 * 4 * 16 = 4096)
+  while (iterator < 64)
+  {
+
+    auxrecord->TypeVal = *((BYTE *)(blockbuffer + iterator*64));
+    strncpy(auxrecord->name, blockbuffer + iterator*64 + 1, 32);
+    auxrecord->blocksFileSize = *((DWORD *)(blockbuffer + iterator*64 + 33));
+    auxrecord->bytesFileSize = *((DWORD *)(blockbuffer + iterator*64 + 37));
+    auxrecord->inodeNumber = *((int *)(blockbuffer + iterator*64 + 41));
+
+
+    {
+      printf("record encontrado:\n");
+      printf("nome: %s\n", auxrecord->name);
+      printf("tipo: %x                >>|1: arquivo, 2: dir, 3: invalido|\n", auxrecord->TypeVal);
+      printf("blocks file size: %u\n", auxrecord->blocksFileSize);
+      printf("bytes file size: %u\n", auxrecord->bytesFileSize);
+      printf("inode number: %d\n\n", auxrecord->inodeNumber);
+
+      if(strcmp(filename, auxrecord->name) == 0)
+      {
+        current_record = auxrecord;
+        break;
+      }
+    }
+    ++iterator;
+    printf("%d\n", iterator);
+  }
+  if (current_record == NULL)
+  {
+    printf("arquivo %s não existe\n", filename);
+    return ERROR;
+  }
+  printf("arquivo %s encontrado!\n", filename);
+
+  int handle = update_open_files(current_record->inodeNumber);
+  if(handle < 0)
+    return ERROR;
+
+  return handle;
+}
+
+
+int update_open_files(int inode_number)
+{
+  int iterator = open_files.filesopen;
+
+  if (iterator == MAX_OPENFILES)
+  {
+    printf("erro: numero maximo de arquivos abertos atingido: %d\n", MAX_OPENFILES);
+    return ERROR;
+  }
+
+  current_file = &open_files;
+
+  int i = 0;
+  if (iterator == 0)
+  {
+    open_files.inode = inode_number;
+    open_files.nextfile = -1;
+    open_files.filesopen++;
+  } else {
+    for (i = 0; i < iterator; ++i)
+    {
+      current_file = current_file->nextfile;
+    }
+    OPEN_t* aux_file = malloc(sizeof(OPEN_t));
+
+    current_file->nextfile = aux_file;
+    aux_file->inode = inode_number;
+    aux_file->nextfile = -1;
+    open_files.filesopen++;
+  }
+
+  printf("arquivos abertos: %d\n", open_files.filesopen);
+  printf("arquivo aberto tem inode: %d \n", current_file->inode);
+
+  return i;
+}
+
+void read_block(int sector)
+{
+  int i;
+  int x = 0;
+  for (i = 0; i < 16; ++i)
+  {
+    read_sector(sector + i, buffer);
+    memcpy((blockbuffer + x), buffer, sizeof(buffer));
+    x = x + 256;
+  }
+}
+
+int get_handle()
+{
+
 }

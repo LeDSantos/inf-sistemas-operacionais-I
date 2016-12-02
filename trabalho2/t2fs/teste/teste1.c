@@ -12,7 +12,7 @@
 
 int main(int argc, const char * argv[]) {
 
-  open2("/sub/asd/");
+  open2("/arq");
 
   return 0;
 }
