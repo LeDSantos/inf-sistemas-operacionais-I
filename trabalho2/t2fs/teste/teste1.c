@@ -12,7 +12,9 @@
 
 int main(int argc, const char * argv[]) {
 
-  open2("/arq");
+  create2("/file");
+
+  open2("/sub");
 
   return 0;
 }

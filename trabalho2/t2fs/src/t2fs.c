@@ -103,6 +103,7 @@ void disk_info()
   printf("Tamanho area inodes: %hu\n", superblock->inodeAreaSize);
   printf("Tamanho bloco logico: %hu\n", superblock->blockSize);
   printf("Tamanho area dados: %u\n\n", superblock->diskSize);
+  disk_initialized = 1;
 }
 
 void disk_init()
@@ -183,16 +184,16 @@ void disk_init()
   }
 
   current_record = NULL;
-  REC_t* auxrecord = malloc(16*sizeof(int));
   int iterator = 0;       //um setor pode ter no maximo 4 records (64 * 4 = 256)
   while (iterator < 64)
   {
+    REC_t* auxrecord = malloc(16*sizeof(int));
     auxrecord->TypeVal = *((BYTE *)(buffer + iterator*64));
     strncpy(auxrecord->name, buffer + iterator*64 + 1, 32);
     auxrecord->blocksFileSize = *((DWORD *)(buffer + iterator*64 + 33));
     auxrecord->bytesFileSize = *((DWORD *)(buffer + iterator*64 + 37));
     auxrecord->inodeNumber = *((int *)(buffer + iterator*64 + 41));
-    printf("%d\n", iterator);
+
     if (auxrecord->TypeVal != 0x00)
     {
       printf("nome: %s\n", auxrecord->name);
@@ -209,8 +210,9 @@ void disk_init()
       auxdir->record = auxrecord;
       strncpy(auxdir->name, auxrecord->name, 32);
       root.filho = auxdir;
+    } else {
+      free(auxrecord);
     }
-
     ++iterator;
   }
 
@@ -237,6 +239,7 @@ void disk_init()
   }
 
   printf("\n\n>> T2FS inicializado!\n\n");
+  disk_initialized = 1;
 }
 
 int identify2 (char *name, int size)
@@ -266,63 +269,59 @@ Entra:  filename -> nome do arquivo a ser criado.
 Saída:  Se a operação foi realizada com sucesso, a função retorna o handle do arquivo (número positivo).
   Em caso de erro, deve ser retornado um valor negativo.
 -----------------------------------------------------------------------------*/
-  /*
 FILE2 create2 (char *filename)
 {
-  Criar um arquivo:
-  bitmap blocos livres
+  //Criar um arquivo:
+  //bitmap blocos livres
 
-
-  if(disk_initialized == 0)
+  if (disk_initialized == 0)
   {
     disk_init();
   }
 
-  if(filename = NULL)
+  if (strlen(filename) > 32)
   {
+    printf("limite de 32 caracteres para nome de arquivo, tente novamente\n");
     return ERROR;
   }
 
-  //procura uma posicao fazia no setor dos inodes.
-  int numberInode = searchBitmap2(BITMAP_INODE, 0);
-  if(numberInode < 0)
+  int freeinode = searchBitmap2(BITMAP_INODE, 0);
+  if (freeinode < 0)
   {
+    printf("não existe inode disponivel, apague algum arquivo antes de criar outro\n");
     return ERROR;
   }
-  //seta a posicao no bitmap do inode ocupado.
-  setBitmap2 (BITMAP_INODE, numberInode, 1);
+  // setBitmap2 (BITMAP_INODE, freeinode, 1);
 
-  REC_t recT;
-
-  recT.TypeVal = 0x01; //indica que é arquivo regular
-  recT.name = filename; //nome do arquivo
-  recT.blocksFileSize = 1; // Tamanho do arquivo, expresso em número de blocos de dados
-  recT.bytesFileSize = 0;  // Tamanho do arquivo. Expresso em número de bytes
-
-  INO_t inoT;
-
-  recT.inodeNumber = numberInode;
-
-  procura um bloco de dados livre para o inode apontar
-  int dataBlock = searchBitmap2(BITMAP_DADOS, 0);
-  if(dataBlock < 0)
+  int freeblock = searchBitmap2(BITMAP_DADOS, 0);
+  if(freeblock < 0)
   {
+    printf("disco cheio, apague algum arquivo e tenta novamente\n");
     return ERROR;
   }
-  //coloca a posicao do bloco de dados como ocupada
-  setBitmap2(BITMAP_DADOS, dataBlock, 1);
+  // setBitmap2(BITMAP_DADOS, freeblock, 1);
 
-  inoT.dataPtr[0] = dataBlock*16;
-  inoT.dataPtr[1] = 0x00;
-  inoT.singleIndPtr = 0x00;
-  inT.doubleIndPtr = 0x00;
+  printf("inode: %d\n", freeinode);
+  printf("bloco: %d\n", freeblock);
+
+  REC_t newfile;
+  newfile.TypeVal = 0x01;
+  strcpy(newfile.name, filename);
+  newfile.blocksFileSize = 1;
+  newfile.bytesFileSize = 0;
+  newfile.inodeNumber = freeinode;
+
+  INO_t newinode;
+  newinode.dataPtr[0] = freeblock*16;
+  newinode.dataPtr[1] = 0x00;
+  newinode.singleIndPtr = 0x00;
+  newinode.doubleIndPtr = 0x00;
 
   //FALTAAA
   // i-node escrever na área de i-node
   // record no bloco de diretorio corrente
-  return numberInode;
+  return freeinode;
 }
-*/
 /*-----------------------------------------------------------------------------
 Função: Apagar um arquivo do disco.
   O nome do arquivo a ser apagado é aquele informado pelo parâmetro "filename".
@@ -372,9 +371,13 @@ FILE2 open2 (char *filename)
   // handle recebe posicão do vetor open_files que tem inode do arquivo a ser aberto
   int handle = path_exists(filename);
   printf("handle: %d\narquivos abertos: %d\n", handle, open_files.filesopen);
-  if(handle < 0)
+  if(handle == -1)
   {
     //não existe diretorio ou arquivo
+    return ERROR;
+  } else if (handle == -2)
+  {
+    printf("\"%s\" eh um diretorio e nao um arquivo\n", filename);
     return ERROR;
   }
 
@@ -712,12 +715,23 @@ int path_exists(char* filename)
     {
       printf("%s nao e um diretorio\n", path[i]);
       current_dir = found;
+      if (i+1 < dirs)
+      {
+        printf("%s não existe\n", path[i]);
+        return ERROR;
+      }
       int foundinode = get_file_inode(path[i]);
       return foundinode;
     } else if (current_dir->filho == NULL && iterator < dirs)
       {
       printf("\"%s\" encontrado! e nao tem subdiretorios\n", searching_for1);
-      int foundinode = get_file_inode(path[i+1]);
+      current_dir = found;
+      if (i+1 == dirs)
+      {
+        return -2;
+      }
+      char* newpath = path[i+1];
+      int foundinode = get_file_inode(newpath);
       return foundinode;
       }
 
@@ -766,6 +780,10 @@ int path_parser(char* path, char* pathfound)
 int get_file_inode(char *filename)
 {
   // pegando o numero do inode do diretorio atual
+  // if (current_dir)
+  // {
+  //   current_dir = current_dir->pai;
+  // }
   printf("procurando por \"%s\" como arquivo em %s\n", filename, current_dir->name);
   int dir_inode = current_dir->record->inodeNumber;
   int sector_to_read;
@@ -865,9 +883,10 @@ int update_open_files(int inode_number)
     OPEN_t* aux_file = malloc(sizeof(OPEN_t));
 
     current_file->nextfile = aux_file;
-    aux_file->inode = inode_number;
-    aux_file->nextfile = -1;
     open_files.filesopen++;
+    aux_file->inode = inode_number;
+    strcpy(aux_file->name, current_record->name);
+    aux_file->nextfile = -1;
   }
 
   printf("arquivos abertos: %d\n", open_files.filesopen);
@@ -878,6 +897,7 @@ int update_open_files(int inode_number)
 
 int read_block(int sector)
 {
+  printf("reading sector %d\n", sector);
   int i;
   int x = 0;
   for (i = 0; i < 16; ++i)
