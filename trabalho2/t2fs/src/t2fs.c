@@ -176,38 +176,31 @@ void disk_init()
 
   printf("Conteudo existente no disco:\n\n");
 
-  int iterator = 0;       //um setor pode ter no maximo 4 records (64 * 4 = 256)
-  int read_x_times = 0;   //iterador pra ler setores contiguamente, incrementado toda vez que faz um read sector
-  while (iterator < 4)
+  if (read_block(data_area) != 0)
   {
-    if (iterator == 3)
-    {
-      iterator = 0;
-      ++read_x_times;
-      if(read_sector(data_area + read_x_times, buffer) != 0)
-      {
-        printf("Erro ao ler setor do de dados começando no setor: %d\n", read_x_times);
-      }
-    }
+    printf("falha ao ler bloco de dados da raiz\n");
+    return ERROR;
+  }
 
-    REC_t* auxrecord = malloc(16*sizeof(int));
+  current_record = NULL;
+  REC_t* auxrecord = malloc(16*sizeof(int));
+  int iterator = 0;       //um setor pode ter no maximo 4 records (64 * 4 = 256)
+  while (iterator < 64)
+  {
     auxrecord->TypeVal = *((BYTE *)(buffer + iterator*64));
     strncpy(auxrecord->name, buffer + iterator*64 + 1, 32);
     auxrecord->blocksFileSize = *((DWORD *)(buffer + iterator*64 + 33));
     auxrecord->bytesFileSize = *((DWORD *)(buffer + iterator*64 + 37));
     auxrecord->inodeNumber = *((int *)(buffer + iterator*64 + 41));
-
-    current_record = auxrecord;
-    if (auxrecord->TypeVal == 0x00)
+    printf("%d\n", iterator);
+    if (auxrecord->TypeVal != 0x00)
     {
-      break;
+      printf("nome: %s\n", auxrecord->name);
+      printf("tipo: %x                >>|1: arquivo, 2: dir, 3: invalido|\n", auxrecord->TypeVal);
+      printf("blocks file size: %u\n", auxrecord->blocksFileSize);
+      printf("bytes file size: %u\n", auxrecord->bytesFileSize);
+      printf("inode number: %d\n\n", auxrecord->inodeNumber);
     }
-
-    printf("nome: %s\n", auxrecord->name);
-    printf("tipo: %x                >>|1: arquivo, 2: dir, 3: invalido|\n", auxrecord->TypeVal);
-    printf("blocks file size: %u\n", auxrecord->blocksFileSize);
-    printf("bytes file size: %u\n", auxrecord->bytesFileSize);
-    printf("inode number: %d\n\n", auxrecord->inodeNumber);
 
     // adicionar diretorios na estrutura para percorrer diretorios
     if (auxrecord->TypeVal == 0x02)
@@ -813,7 +806,7 @@ int get_file_inode(char *filename)
     auxrecord->bytesFileSize = *((DWORD *)(blockbuffer + iterator*64 + 37));
     auxrecord->inodeNumber = *((int *)(blockbuffer + iterator*64 + 41));
 
-
+    if (auxrecord->TypeVal == 1)
     {
       printf("record encontrado:\n");
       printf("nome: %s\n", auxrecord->name);
@@ -883,19 +876,17 @@ int update_open_files(int inode_number)
   return i;
 }
 
-void read_block(int sector)
+int read_block(int sector)
 {
   int i;
   int x = 0;
   for (i = 0; i < 16; ++i)
   {
-    read_sector(sector + i, buffer);
+    if(read_sector(sector + i, buffer) != 0)
+        return ERROR;
     memcpy((blockbuffer + x), buffer, sizeof(buffer));
     x = x + 256;
   }
-}
 
-int get_handle()
-{
-
+  return SUCCESS;
 }
