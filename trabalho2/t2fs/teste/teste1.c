@@ -14,7 +14,7 @@ int main(int argc, const char * argv[]) {
 
   create2("/file");
 
-  open2("/sub/arq/asd");
+  open2("/opa/asd");
 
   return 0;
 }

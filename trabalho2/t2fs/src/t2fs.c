@@ -240,6 +240,7 @@ void disk_init()
 
   printf("\n\n>> T2FS inicializado!\n\n");
   disk_initialized = 1;
+  current_dir = &root;
 }
 
 int identify2 (char *name, int size)
@@ -367,6 +368,22 @@ FILE2 open2 (char *filename)
   {
     disk_init();
   }
+
+  current_dir = current_dir->filho;
+  printf("%s\n", current_dir->name);
+  char newnome[] = "opa";
+  DIR_t* newdir = malloc(sizeof(DIR_t));
+  strncpy(newdir->name, newnome, 4);
+  newdir->pai = &root;
+  current_dir->irmao = newdir;
+  printf("%s\n", current_dir->irmao->name);
+
+  char newnome2[] = "asd";
+  DIR_t* newdir2 = malloc(sizeof(DIR_t));
+  strncpy(newdir2->name, newnome2, 4);
+  newdir2->pai = newdir;
+  newdir->filho = newdir2;
+
 
   // handle recebe posicão do vetor open_files que tem inode do arquivo a ser aberto
   int handle = path_exists(filename);
@@ -688,6 +705,7 @@ int path_exists(char* filename)
   i = 0;
   int encontrou = 0;
   current_dir = root.filho;
+  // printf("Comecando em %s\n", current_dir->name);
 
   DIR_t* found;
 
@@ -705,12 +723,14 @@ int path_exists(char* filename)
       searching_for2 = current_dir->name;
       found = current_dir->pai;
       printf("\nprocurando por: %s dentro de %s ...\n", searching_for1, searching_for1_father);
+      // printf("%s %s\n", searching_for1, searching_for2);
       if (strcmp(searching_for1, searching_for2) == 0)
       {
         encontrou = 1;
         break;
       }
       current_dir = current_dir->irmao;
+      // printf("%s\n", current_dir->name);
     } while(current_dir);
 
     if (encontrou == 0)
@@ -729,23 +749,27 @@ int path_exists(char* filename)
       int foundinode = get_file_inode(path[i]);
       return foundinode;
 
-    } else if (current_dir->filho == NULL && iterator < dirs)
+    } else if (iterator < dirs) // current_dir->filho == NULL &&
       {
-      printf("\"%s\" encontrado! e nao tem subdiretorios\n", searching_for1);
-      if (!current_dir)
-      {
-        current_dir = found;
-      }
-      if (i+1 == dirs)
-      {
-        return -2;
-      } else if ((i+2) <= dirs)
+        printf("\"%s\" encontrado!\n", searching_for1);
+        if (!current_dir->filho)
         {
-          return -3;
+            printf("e nao tem subdiretorios\n");
+          if (!current_dir)
+          {
+            current_dir = found;
+          }
+          if (i+1 == dirs)
+          {
+            return -2;
+          } else if ((i+2) <= dirs)
+            {
+              return -3;
+            }
+          char* newpath = path[i+1];
+          int foundinode = get_file_inode(newpath);
+          return foundinode;
         }
-      char* newpath = path[i+1];
-      int foundinode = get_file_inode(newpath);
-      return foundinode;
       }
 
     encontrou = 0;
