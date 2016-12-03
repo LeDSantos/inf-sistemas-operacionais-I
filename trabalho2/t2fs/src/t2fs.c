@@ -288,7 +288,7 @@ FILE2 create2 (char *filename)
   int freeinode = searchBitmap2(BITMAP_INODE, 0);
   if (freeinode < 0)
   {
-    printf("não existe inode disponivel, apague algum arquivo antes de criar outro\n");
+    printf("nao existe inode disponivel, apague algum arquivo antes de criar outro\n");
     return ERROR;
   }
   // setBitmap2 (BITMAP_INODE, freeinode, 1);
@@ -370,17 +370,19 @@ FILE2 open2 (char *filename)
 
   // handle recebe posicão do vetor open_files que tem inode do arquivo a ser aberto
   int handle = path_exists(filename);
-  printf("handle: %d\narquivos abertos: %d\n", handle, open_files.filesopen);
   if(handle == -1)
   {
-    //não existe diretorio ou arquivo
+    printf("%s nao eh um arquivo valido\n", filename);
     return ERROR;
   } else if (handle == -2)
-  {
-    printf("\"%s\" eh um diretorio e nao um arquivo\n", filename);
-    return ERROR;
-  }
-
+    {
+      printf("\"%s\" eh um diretorio e nao um arquivo\ndigite o caminho de um arquivo e tente novamente\n", filename);
+      return ERROR;
+    } else if (handle == -3)
+      {
+        printf("%s nao eh um caminho valido\n", filename);
+      }
+  printf("arquivos abertos: %d\n", open_files.filesopen);
   return handle;
 }
 
@@ -676,7 +678,7 @@ int path_exists(char* filename)
   char *path[25];
   int dirs = path_parser(filename, &path);
 
-  printf("possiveis diretorios: %d   ", dirs);
+  printf("possiveis diretorios: %d\n", dirs);
   int i;
   for (i = 0; i < dirs; ++i)
   {
@@ -714,22 +716,33 @@ int path_exists(char* filename)
     if (encontrou == 0)
     {
       printf("%s nao e um diretorio\n", path[i]);
-      current_dir = found;
+      if (!current_dir)
+      {
+        current_dir = found;
+      }
+
       if (i+1 < dirs)
       {
-        printf("%s não existe\n", path[i]);
         return ERROR;
       }
+
       int foundinode = get_file_inode(path[i]);
       return foundinode;
+
     } else if (current_dir->filho == NULL && iterator < dirs)
       {
       printf("\"%s\" encontrado! e nao tem subdiretorios\n", searching_for1);
-      current_dir = found;
+      if (!current_dir)
+      {
+        current_dir = found;
+      }
       if (i+1 == dirs)
       {
         return -2;
-      }
+      } else if ((i+2) <= dirs)
+        {
+          return -3;
+        }
       char* newpath = path[i+1];
       int foundinode = get_file_inode(newpath);
       return foundinode;
@@ -740,7 +753,7 @@ int path_exists(char* filename)
     current_dir = current_dir->filho;
   }
 
-  return SUCCESS;
+  return ERROR;
 }
 
 int path_parser(char* path, char* pathfound)
@@ -749,7 +762,7 @@ int path_parser(char* path, char* pathfound)
   char aux[2048];
   strcpy(aux, path);
 
-  printf ("Path: \"%s\"\n", path);
+  printf ("caminho: \"%s\"\n", path);
 
   int char_size = 1;
   token = strtok (aux, "/");
@@ -840,7 +853,7 @@ int get_file_inode(char *filename)
       }
     }
     ++iterator;
-    printf("%d\n", iterator);
+    // printf("%d\n", iterator);
   }
   if (current_record == NULL)
   {
