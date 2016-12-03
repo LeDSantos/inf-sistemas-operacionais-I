@@ -12,9 +12,9 @@
 
 int main(int argc, const char * argv[]) {
 
-  create2("/file");
+  create2("file");
 
-  open2("/opa/asd");
+  open2("file");
 
   return 0;
 }
