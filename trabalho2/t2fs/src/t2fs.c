@@ -188,31 +188,31 @@ void disk_init()
   while (iterator < 64)
   {
     REC_t* auxrecord = malloc(16*sizeof(int));
-    auxrecord->TypeVal = *((BYTE *)(buffer + iterator*64));
-    strncpy(auxrecord->name, buffer + iterator*64 + 1, 32);
-    auxrecord->blocksFileSize = *((DWORD *)(buffer + iterator*64 + 33));
-    auxrecord->bytesFileSize = *((DWORD *)(buffer + iterator*64 + 37));
-    auxrecord->inodeNumber = *((int *)(buffer + iterator*64 + 41));
-
-    if (auxrecord->TypeVal != 0x00)
+    auxrecord->TypeVal = *((BYTE *)(blockbuffer + iterator*64));
+    strncpy(auxrecord->name, blockbuffer + iterator*64 + 1, 32);
+    auxrecord->blocksFileSize = *((DWORD *)(blockbuffer + iterator*64 + 33));
+    auxrecord->bytesFileSize = *((DWORD *)(blockbuffer + iterator*64 + 37));
+    auxrecord->inodeNumber = *((int *)(blockbuffer + iterator*64 + 41));
+    // adicionar diretorios na estrutura para percorrer diretorios
+    if (auxrecord->TypeVal == 0x02)
     {
       printf("nome: %s\n", auxrecord->name);
       printf("tipo: %x                >>|1: arquivo, 2: dir, 3: invalido|\n", auxrecord->TypeVal);
       printf("blocks file size: %u\n", auxrecord->blocksFileSize);
       printf("bytes file size: %u\n", auxrecord->bytesFileSize);
       printf("inode number: %d\n\n", auxrecord->inodeNumber);
-    }
 
-    // adicionar diretorios na estrutura para percorrer diretorios
-    if (auxrecord->TypeVal == 0x02)
-    {
       auxdir->pai = &root;
       auxdir->record = auxrecord;
       strncpy(auxdir->name, auxrecord->name, 32);
       root.filho = auxdir;
-    } else {
-      free(auxrecord);
-    }
+
+      //TODO
+      // SE TEM DIRETORIO, PERCORRER ESSE DIRETORIO E ACHAR SUBDIRETORIOS EXISTENTES
+      // GARANTIR QUE TESTES DIFERENTES EM SEQUENCIA FUNCIONARAO
+
+    } else free(auxrecord);
+
     ++iterator;
   }
 
@@ -305,6 +305,26 @@ FILE2 create2 (char *filename)
   printf("inode: %d\n", freeinode);
   printf("bloco: %d\n", freeblock);
 
+  // printf("***********\n");
+  // debug_inodes(0);
+  // printf("***********\n");
+  if (write_inode_to_disk(freeblock, freeinode) != 0)
+  {
+    printf("falha ao escrever no disco\n");
+    return ERROR;
+  }
+
+  // printf("***********\n");
+  // debug_inodes(0);
+  // printf("***********\n");
+
+  // REC_t auxrecord
+  // auxrecord->TypeVal = *((BYTE *)(buffer + iterator*64));
+  // strncpy(auxrecord->name, buffer + iterator*64 + 1, 32);
+  // auxrecord->blocksFileSize = *((DWORD *)(buffer + iterator*64 + 33));
+  // auxrecord->bytesFileSize = *((DWORD *)(buffer + iterator*64 + 37));
+  // auxrecord->inodeNumber = *((int *)(buffer + iterator*64 + 41));
+
   REC_t newfile;
   newfile.TypeVal = 0x01;
   strcpy(newfile.name, filename);
@@ -312,11 +332,7 @@ FILE2 create2 (char *filename)
   newfile.bytesFileSize = 0;
   newfile.inodeNumber = freeinode;
 
-  INO_t newinode;
-  newinode.dataPtr[0] = freeblock*16;
-  newinode.dataPtr[1] = 0x00;
-  newinode.singleIndPtr = 0x00;
-  newinode.doubleIndPtr = 0x00;
+  //write_sector RECORD no current_dir
 
   //FALTAAA
   // i-node escrever na área de i-node
@@ -852,7 +868,7 @@ int get_file_inode(char *filename)
   current_record = NULL;
   REC_t* auxrecord = malloc(16*sizeof(int));
   int iterator = 0;       //um bloco pode ter no maximo 64 records (64 * 4 * 16 = 4096)
-  while (iterator < 64)
+  while (iterator < 256)
   {
 
     auxrecord->TypeVal = *((BYTE *)(blockbuffer + iterator*64));
@@ -934,7 +950,7 @@ int update_open_files(int inode_number)
 
 int read_block(int sector)
 {
-  printf("reading sector %d\n", sector);
+  printf("lendo setor %d\n", sector);
   int i;
   int x = 0;
   for (i = 0; i < 16; ++i)
@@ -944,6 +960,108 @@ int read_block(int sector)
     memcpy((blockbuffer + x), buffer, sizeof(buffer));
     x = x + 256;
   }
+
+  return SUCCESS;
+}
+
+int write_block(int sector)
+{
+  printf("escrevendo no setor %d\n", sector);
+  int i;
+  int x = 0;
+  // memcpy(buffer, (blockbuffer + x), sizeof(buffer));
+  for (i = 0; i < 16; ++i)
+  {
+    memcpy(buffer, (blockbuffer + x), sizeof(buffer));
+    if(write_sector(sector + i, buffer) != 0)
+        return ERROR;
+    x = x + 256;
+  }
+
+  return SUCCESS;
+}
+
+void debug_inodes(int area) //0: disco; 1: blockbuffer
+{
+  if (area == 0)
+  {
+    printf("DEBUG DISCO\n");
+    read_block(inode_area);
+
+    INO_t newinode;
+
+    int x = 0;
+    while(x < 256)
+    {
+    newinode.dataPtr[0] = *((int *)(blockbuffer + x*16));
+    newinode.dataPtr[1] = *((int *)(blockbuffer + x*16 + 4));
+    newinode.singleIndPtr = *((int *)(blockbuffer + x*16 + 8));
+    newinode.doubleIndPtr = *((int *)(blockbuffer + x*16 + 12));
+
+    printf("%d %d %d %d\n", newinode.dataPtr[0], newinode.dataPtr[1], newinode.singleIndPtr, newinode.doubleIndPtr);
+    ++x;
+    }
+  } else if (area == 1)
+  {
+    printf("DEBUG BLOCKBUFFER\n");
+    INO_t newinode;
+
+    int x = 0;
+    while(x < 256)
+    {
+    newinode.dataPtr[0] = *((int *)(blockbuffer + x*16));
+    newinode.dataPtr[1] = *((int *)(blockbuffer + x*16 + 4));
+    newinode.singleIndPtr = *((int *)(blockbuffer + x*16 + 8));
+    newinode.doubleIndPtr = *((int *)(blockbuffer + x*16 + 12));
+
+    printf("%d %d %d %d\n", newinode.dataPtr[0], newinode.dataPtr[1], newinode.singleIndPtr, newinode.doubleIndPtr);
+    ++x;
+    }
+  }
+}
+
+
+int write_inode_to_disk(int freeblock, int freeinode)
+{
+  int offset;
+  offset = freeinode*16;
+  read_block(inode_area);
+
+  INO_t newinode;
+
+  newinode.dataPtr[0] = *((int *)(blockbuffer + offset));
+  newinode.dataPtr[1] = *((int *)(blockbuffer + offset + 4));
+  newinode.singleIndPtr = *((int *)(blockbuffer + offset + 8));
+  newinode.doubleIndPtr = *((int *)(blockbuffer + offset + 12));
+
+  printf("%d %d %d %d\n", newinode.dataPtr[0], newinode.dataPtr[1], newinode.singleIndPtr, newinode.doubleIndPtr);
+  //write_sector INODE
+
+  newinode.dataPtr[0] = freeblock;
+  newinode.dataPtr[1] = INVALID_PTR;
+  newinode.singleIndPtr = INVALID_PTR;
+  newinode.doubleIndPtr = INVALID_PTR;
+  memcpy((blockbuffer + offset), &newinode.dataPtr[0], sizeof(int));
+  memcpy((blockbuffer + offset + 4), &newinode.dataPtr[1], sizeof(int));
+  memcpy((blockbuffer + offset + 8), &newinode.singleIndPtr, sizeof(int));
+  memcpy((blockbuffer + offset + 12), &newinode.doubleIndPtr, sizeof(int));
+
+  newinode.dataPtr[0] = *((int *)(blockbuffer + offset));
+  newinode.dataPtr[1] = *((int *)(blockbuffer + offset + 4));
+  newinode.singleIndPtr = *((int *)(blockbuffer + offset + 8));
+  newinode.doubleIndPtr = *((int *)(blockbuffer + offset + 12));
+
+  if (newinode.dataPtr[0] != freeblock)
+  {
+    printf("erro ao escrever inode no buffer\n");
+  }
+
+  printf("%d %d %d %d\n", newinode.dataPtr[0], newinode.dataPtr[1], newinode.singleIndPtr, newinode.doubleIndPtr);
+
+  // debug_inodes(1);
+
+  if (write_block(inode_area) != 0)
+      return ERROR;
 
   return SUCCESS;
 }
