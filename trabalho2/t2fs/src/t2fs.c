@@ -798,8 +798,96 @@ int rmdir2 (char *pathname)
   {
     disk_init();
   }
+  if (pathname == NULL || pathname[0] == '\0'  || sizeof(pathname) <= 0 || strlen(pathname) > 32)
+  {
+    printf("[rmdir2] nome invalida\n");
+    return ERROR;
+  }
+  char *path[25];
+  int dirs = path_parser(pathname, &path);
+  char *name = path[dirs-1];
 
-  if(pathname == NULL)
+  if (dirs > 1)
+  {
+    current_dir = root.filho;
+    opendir_from_create = 1;
+    opendir2(pathname);
+    opendir_from_create = 0;
+  } else
+  {
+    current_dir = &root;
+  }
+
+  int found = find_record_in_blockbuffer(&global_record, 0x02, name);
+  if (found < -1)
+  {
+    // printf("**************************** %d %d\n", found, global_record.inodeNumber);
+    if (check_open_file(global_record.inodeNumber) == -1)
+    {
+      printf("[rmdir2] nao eh possivel deletar um arquivo aberto\n");
+      return ERROR;
+    }
+
+    // debug_buffer_disk(0,1,0);
+    // debug_buffer_disk(1,1,0);
+
+    if (delete_record_from_buffer(name) != 0)
+    {
+      printf("[rmdir2] falha ao remover record do buffer\n");
+      return ERROR;
+    }
+
+    if (write_block(data_area + current_dir->dir_block*16) != 0)
+    {
+      printf("[rmdir2] falha ao remover no disco\n");
+      return ERROR;
+    }
+    // debug_buffer_disk(0,1,0);
+    // debug_buffer_disk(1,1,0);
+
+    if(setBitmap2(BITMAP_INODE, global_record.inodeNumber, 0) != 0)
+        return ERROR;
+
+    get_block_from_inode(&global_inode, global_record.inodeNumber);
+    // printf("******ASDAS %d %d %d %d\n", global_inode.dataPtr[0], global_inode.dataPtr[1], global_inode.singleIndPtr, global_inode.doubleIndPtr);
+    if (global_inode.dataPtr[0] != -1)
+    {
+      if (setBitmap2(BITMAP_DADOS, global_inode.dataPtr[0], 0) != 0)
+          return ERROR;
+    }
+
+    if (global_inode.dataPtr[1] != -1)
+    {
+      if (setBitmap2(BITMAP_DADOS, global_inode.dataPtr[1], 0) != 0)
+          return ERROR;
+    }
+
+    if (global_inode.singleIndPtr != -1)
+    {
+      if (setBitmap2(BITMAP_DADOS, global_inode.singleIndPtr, 0) != 0)
+          return ERROR;
+    }
+
+    if (global_inode.doubleIndPtr != -1)
+    {
+      if (setBitmap2(BITMAP_DADOS, global_inode.doubleIndPtr, 0) != 0)
+          return ERROR;
+    }
+
+    printf("[rmdir2] \"%s\" removido com sucesso\n", pathname);
+    return SUCCESS;
+  } else
+    {
+      printf("[rmdir2] arquivo nao encontrado\n");
+      return ERROR;
+    }
+
+  //inode pointers = INVALID
+  //record type = 0x00
+  //setbitmap block free
+  //setbitmap inode free
+
+  if(pathname = NULL)
   {
     return ERROR;
   }

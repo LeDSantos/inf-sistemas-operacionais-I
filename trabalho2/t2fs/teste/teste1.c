@@ -44,6 +44,7 @@ int main(int argc, const char * argv[]) {
 
   // mkdir2("/dae");
   // mkdir2("/asd");
+  rmdir2("/sub");
   debug_buffer_disk(0,1,0);
   // int dae = opendir2("/dae");
   // closedir2(dae);
