@@ -21,8 +21,9 @@ int main(int argc, const char * argv[]) {
   // create2("/sub/file");
 
   int file = open2("file");
-  int subfile = open2("/sub/file");
+  open2("/sub/file");
   create2("/sub/file");
+  int subfile = open2("/sub/file");
   int arq = open2("/arq");
   int arq2 = open2("/sub/arq2");
   close2(arq);
@@ -35,15 +36,17 @@ int main(int argc, const char * argv[]) {
 
   // debug_buffer_disk(0,1,0);
   // debug_buffer_disk(0,1,2);
-  // OK, tudo funcionou ate aqui
-  delete2("/file");
-
+  delete2("/arq");
   // debug_buffer_disk(0,0,0);
-
   delete2("/sub/file");
+  // OK, tudo funcionou ate aqui
 
-  // debug_buffer_disk(0,0,0);
 
+  // mkdir2("/dae");
+  // mkdir2("/asd");
+  debug_buffer_disk(0,1,0);
+  // int dae = opendir2("/dae");
+  // closedir2(dae);
 // 0 = root
 // 1 = arq
 // 2 = sub
