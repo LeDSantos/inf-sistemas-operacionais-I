@@ -489,7 +489,7 @@ int close2 (FILE2 handle)
     return ERROR;
   }
 
-  printf("[close2] procurando arquivo com handle: %d\n", (int)handle);
+  printf("[close2] procurando arquivo com handle: %d\n", handle);
   current_file = &open_files;
   do
   {
@@ -784,12 +784,33 @@ int closedir2 (DIR2 handle)
     disk_init();
   }
 
-  if(handle = NULL)
+  if(handle == NULL || handle < 0)
   {
+    printf("[closedir2] handle nao possui valor positivo: %d; tente novamente\n", handle);
     return ERROR;
   }
 
-  return SUCCESS;
+  printf("[closedir2] procurando diretorio com handle: %d\n", handle);
+  current_file = &open_files;
+  do
+  {
+    if (current_file->inode == handle)
+    {
+      if (current_file->type != 0x02)
+      {
+        printf("[closedir2] handle pertencente a um arquivo, use close2()\n");
+        return ERROR;
+      }
+      current_file->inode = INVALID_PTR;
+      open_files.filesopen--;
+      printf("[closedir2] diretorio fechado com sucesso\n");
+      printf("[closedir2] arquivos abertos: %d\n", open_files.filesopen);
+      return 0;
+    }
+    current_file = current_file->nextfile;
+  } while (current_file != -1);
+  printf("[closedir2] nao existe diretorio aberto com handle: %d\n", handle);
+  return ERROR;
 }
 
 // type: 0 = file; 1 = dir
