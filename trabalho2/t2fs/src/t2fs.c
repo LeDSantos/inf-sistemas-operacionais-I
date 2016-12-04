@@ -73,7 +73,7 @@ typedef struct open_files_struct OPEN_t;
 struct open_files_struct {
   int     filesopen;
   int     inode;
-  // char    name[32];
+  BYTE    type;
   OPEN_t* nextfile;
 };
 
@@ -81,7 +81,7 @@ int path_exists(char* filename, int type);
 int path_parser(char* path, char* pathfound);
 int get_file_inode(char *filename);
 int write_block(int sector);
-int update_open_files(int inode_number);
+int update_open_files(int inode_number, BYTE type);
 int read_block(int sector);
 void debug_buffer_disk(int area, int type, int bloco);
 int create_inode_write_to_disk(int freeblock, int freeinode);
@@ -93,6 +93,7 @@ void testar_ler_records_bloco_qualquer();
 int populate_dir_struct_from_block(int block);
 
 static int disk_initialized = 0;
+static int opendir_from_create = 0;
 unsigned char buffer[SECTOR_SIZE];
 unsigned char blockbuffer[16*SECTOR_SIZE];
 SB_t* superblock;
@@ -346,7 +347,9 @@ FILE2 create2 (char *filename)
   if (dirs > 1)
   {
     current_dir = root.filho;
+    opendir_from_create = 1;
     opendir2(filename);
+    opendir_from_create = 0;
   }
 
   printf("[create2] inode livre encontrado: %d\n", freeinode);
@@ -460,7 +463,7 @@ FILE2 open2 (char *filename)
         printf("[open2] %s nao eh um caminho valido\n", filename);
       }
   printf("[open2] arquivos abertos: %d\n", open_files.filesopen);
-  // show_open_files_data();
+
   return current_record->inodeNumber;
 }
 
@@ -492,6 +495,11 @@ int close2 (FILE2 handle)
   {
     if (current_file->inode == handle)
     {
+      if (current_file->type != 0x01)
+      {
+        printf("[close2] handle pertencente a um diretorio, use closedir2()\n");
+        return ERROR;
+      }
       current_file->inode = INVALID_PTR;
       open_files.filesopen--;
       printf("[close2] arquivo fechado com sucesso\n");
@@ -714,8 +722,13 @@ DIR2 opendir2 (char *pathname)
 
   printf("[opendir2] diretorio atual: %s\n", current_dir->name);
 
-  int update = update_open_files(current_dir->record->inodeNumber);
-  if(update < 0)
+  if (opendir_from_create == 1)
+  {
+    return current_dir->record->inodeNumber;
+  }
+
+  // int update = ;
+  if(update_open_files(current_dir->record->inodeNumber, current_dir->record->TypeVal) < 0)
     return ERROR;
 
 
@@ -988,9 +1001,9 @@ int get_file_inode(char *filename)
     printf("[get_file_inode] arquivo \"%s\" não existe\n", filename);
     return ERROR;
   }
-  printf("[get_file_inode] arquivo \"%s\" encontrado!\n", filename);
+  printf("[get_file_inode] arquivo \"%s\" encontrado!\n", current_record->name);
 
-  int handle = update_open_files(current_record->inodeNumber);
+  int handle = update_open_files(current_record->inodeNumber, current_record->TypeVal);
   if(handle < 0)
     return ERROR;
 
@@ -998,7 +1011,7 @@ int get_file_inode(char *filename)
 }
 
 
-int update_open_files(int inode_number)
+int update_open_files(int inode_number, BYTE type)
 {
   int iterator = open_files.filesopen;
 
@@ -1014,8 +1027,10 @@ int update_open_files(int inode_number)
   if (iterator == 0)
   {
     open_files.inode = inode_number;
+    open_files.type = type;
     open_files.nextfile = -1;
     open_files.filesopen++;
+
   } else {
     for (i = 1; i < iterator; ++i)
     {
@@ -1026,15 +1041,15 @@ int update_open_files(int inode_number)
     current_file->nextfile = aux_file;
     open_files.filesopen++;
     aux_file->inode = inode_number;
+    aux_file->type = type;
     aux_file->nextfile = -1;
 
-    return aux_file->inode;
   }
 
-  printf("[update_open_files] arquivo aberto tem handle: %d \n", current_file->inode);
+  printf("[update_open_files] arquivo aberto tem handle: %d \n", inode_number);
   printf("[update_open_files] arquivos abertos: %d\n", open_files.filesopen);
 
-  return i;
+  return inode_number;
 }
 
 int read_block(int sector)

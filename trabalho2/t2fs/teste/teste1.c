@@ -17,7 +17,7 @@ int main(int argc, const char * argv[]) {
   // debug_buffer_disk(0,1,2);
 
   create2("/file");
-  opendir2("/sub/");
+  int sub = opendir2("/sub/");
   create2("/sub/file");
 
   // debug_buffer_disk(0,0,0);
@@ -31,6 +31,7 @@ int main(int argc, const char * argv[]) {
   int arq2 = open2("/sub/arq2");
   close2(arq);
   close2(arq2);
+  close2(sub);
 
   return 0;
 }
