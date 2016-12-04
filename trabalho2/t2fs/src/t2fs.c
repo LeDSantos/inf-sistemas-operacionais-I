@@ -714,6 +714,12 @@ DIR2 opendir2 (char *pathname)
 
   printf("[opendir2] diretorio atual: %s\n", current_dir->name);
 
+  int update = update_open_files(current_dir->record->inodeNumber);
+  if(update < 0)
+    return ERROR;
+
+
+
   return current_dir->record->inodeNumber;
 }
 
@@ -1025,7 +1031,7 @@ int update_open_files(int inode_number)
     return aux_file->inode;
   }
 
-  printf("[update_open_files] arquivo aberto tem inode: %d \n", current_file->inode);
+  printf("[update_open_files] arquivo aberto tem handle: %d \n", current_file->inode);
   printf("[update_open_files] arquivos abertos: %d\n", open_files.filesopen);
 
   return i;
