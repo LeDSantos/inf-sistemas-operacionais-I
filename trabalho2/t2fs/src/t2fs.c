@@ -80,17 +80,22 @@ struct open_files_struct {
 int path_exists(char* filename, int type);
 int path_parser(char* path, char* pathfound);
 int get_file_inode(char *filename);
-int write_block(int sector);
-int update_open_files(int inode_number, BYTE type);
 int read_block(int sector);
-void debug_buffer_disk(int area, int type, int bloco);
+int write_block(int sector);
+int populate_dir_struct_from_block(int block);
+int update_open_files(int inode_number, BYTE type);
+int check_open_file(int inode);
 int create_inode_write_to_disk(int freeblock, int freeinode);
 int create_record_write_to_disk(int freeblock, int freeinode, char* filename);
 int find_record_in_blockbuffer(REC_t* auxrecord, BYTE type, char* filename);
-int get_block_from_inode(int inode);
+int find_free_record_in_blockbuffer(REC_t* auxrecord);
+int get_block_from_inode(INO_t* newinode, int inode);
+int delete_record_from_buffer(char* filename);
+
+// for debugging
 void show_open_files_data();
+void debug_buffer_disk(int area, int type, int bloco);
 void testar_ler_records_bloco_qualquer();
-int populate_dir_struct_from_block(int block);
 
 static int disk_initialized = 0;
 static int opendir_from_create = 0;
@@ -103,7 +108,8 @@ DIR_t* current_dir;
 DIR_t root;
 OPEN_t* current_file;
 OPEN_t open_files;
-
+REC_t global_record;
+INO_t global_inode;
 /*
 ** inicializa t2fs
 ** criacao do superbloco
@@ -234,7 +240,8 @@ void disk_init()
 
       //TODO
       // PEGAR BLOCO APONTADO PELO INODE DO DIR E COLOCAR EM DIR_t
-      int auxrec_block = get_block_from_inode(auxrecord->inodeNumber);
+      INO_t *newinode;
+      int auxrec_block = get_block_from_inode(&newinode, auxrecord->inodeNumber);
       if (auxrec_block == ERROR)
       {
         printf("[disk_info] erro ao recuperar bloco do subdir %s\n", auxdir->name);
@@ -350,6 +357,9 @@ FILE2 create2 (char *filename)
     opendir_from_create = 1;
     opendir2(filename);
     opendir_from_create = 0;
+  } else
+  {
+    current_dir = &root;
   }
 
   printf("[create2] inode livre encontrado: %d\n", freeinode);
@@ -414,6 +424,94 @@ int delete2 (char *filename)
   {
     disk_init();
   }
+  if (filename == NULL || filename[0] == '\0'  || sizeof(filename) <= 0 || strlen(filename) > 32)
+  {
+    printf("[delete2] nome invalida\n");
+    return ERROR;
+  }
+  char *path[25];
+  int dirs = path_parser(filename, &path);
+  char *name = path[dirs-1];
+
+  if (dirs > 1)
+  {
+    current_dir = root.filho;
+    opendir_from_create = 1;
+    opendir2(filename);
+    opendir_from_create = 0;
+  } else
+  {
+    current_dir = &root;
+  }
+
+  int found = find_record_in_blockbuffer(&global_record, 0x01, name);
+  if (found < -1)
+  {
+    // printf("**************************** %d %d\n", found, global_record.inodeNumber);
+    if (check_open_file(global_record.inodeNumber) == -1)
+    {
+      printf("[delete2] nao eh possivel deletar um arquivo aberto\n");
+      return ERROR;
+    }
+
+    // debug_buffer_disk(0,1,0);
+    // debug_buffer_disk(1,1,0);
+
+    if (delete_record_from_buffer(name) != 0)
+    {
+      printf("[delete2] falha ao remover record do buffer\n");
+      return ERROR;
+    }
+
+    if (write_block(data_area + current_dir->dir_block*16) != 0)
+    {
+      printf("[delete2] falha ao remover no disco\n");
+      return ERROR;
+    }
+    // debug_buffer_disk(0,1,0);
+    // debug_buffer_disk(1,1,0);
+
+    if(setBitmap2(BITMAP_INODE, global_record.inodeNumber, 0) != 0)
+        return ERROR;
+
+    get_block_from_inode(&global_inode, global_record.inodeNumber);
+    // printf("******ASDAS %d %d %d %d\n", global_inode.dataPtr[0], global_inode.dataPtr[1], global_inode.singleIndPtr, global_inode.doubleIndPtr);
+    if (global_inode.dataPtr[0] != -1)
+    {
+      if (setBitmap2(BITMAP_DADOS, global_inode.dataPtr[0], 0) != 0)
+          return ERROR;
+    }
+
+    if (global_inode.dataPtr[1] != -1)
+    {
+      if (setBitmap2(BITMAP_DADOS, global_inode.dataPtr[1], 0) != 0)
+          return ERROR;
+    }
+
+    if (global_inode.singleIndPtr != -1)
+    {
+      if (setBitmap2(BITMAP_DADOS, global_inode.singleIndPtr, 0) != 0)
+          return ERROR;
+    }
+
+    if (global_inode.doubleIndPtr != -1)
+    {
+      if (setBitmap2(BITMAP_DADOS, global_inode.doubleIndPtr, 0) != 0)
+          return ERROR;
+    }
+
+    printf("[delete2] \"%s\" removido com sucesso\n", filename);
+    return SUCCESS;
+  } else
+    {
+      printf("[delete2] arquivo nao encontrado\n");
+      return ERROR;
+    }
+
+  //inode pointers = INVALID
+  //record type = 0x00
+  //setbitmap block free
+  //setbitmap inode free
 
   if(filename = NULL)
   {
@@ -720,7 +818,7 @@ DIR2 opendir2 (char *pathname)
     return ERROR;
   }
 
-  printf("[opendir2] diretorio atual: %s\n", current_dir->name);
+  printf("[opendir2] diretorio atual: %s\n", pathname);
 
   if (opendir_from_create == 1)
   {
@@ -1117,6 +1215,16 @@ void debug_buffer_disk(int area, int type, int bloco)
       printf("B1 | B2 | IND1 | IND2\n");
       read_block(inode_area + bloco*16);
 
+      printf("[disk_info] bitmaps ocupados:\n");
+      int ii = 0;
+      int bmp;
+      for (ii = 0; ii < 2048; ++ii)
+      {
+         bmp = getBitmap2(BITMAP_INODE, ii);
+         if (bmp == 1) printf("inode %d esta ocupado\n", ii);
+         bmp = getBitmap2(BITMAP_DADOS, ii);
+         if (bmp == 1) printf("bloco %d esta ocupado\n", ii);
+      }
       INO_t newinode;
 
       int x = 0;
@@ -1158,6 +1266,17 @@ void debug_buffer_disk(int area, int type, int bloco)
       printf("DEBUG INODE BUFFER\n");
       printf("B1 | B2 | IND1 | IND2\n");
       INO_t newinode;
+
+      printf("[disk_info] bitmaps ocupados:\n");
+      int ii = 0;
+      int bmp;
+      for (ii = 0; ii < 2048; ++ii)
+      {
+         bmp = getBitmap2(BITMAP_INODE, ii);
+         if (bmp == 1) printf("inode %d esta ocupado\n", ii);
+         bmp = getBitmap2(BITMAP_DADOS, ii);
+         if (bmp == 1) printf("bloco %d esta ocupado\n", ii);
+      }
 
       int x = 0;
       while(x < 256)
@@ -1249,7 +1368,10 @@ int create_record_write_to_disk(int freeblock, int freeinode, char* filename)
 
   REC_t* auxrecord = malloc(16*sizeof(int));
 
-  int offset = find_record_in_blockbuffer(auxrecord, 0x00, filename);
+  if (find_record_in_blockbuffer(auxrecord, 0x01, filename) < -1)
+      return ERROR;
+
+  int offset = find_free_record_in_blockbuffer(auxrecord);
   if (offset == -1)
   {
     printf("[create_record_write_to_disk] nenhum record livre disponivel no bloco\n");
@@ -1296,8 +1418,9 @@ int create_record_write_to_disk(int freeblock, int freeinode, char* filename)
 
 int find_record_in_blockbuffer(REC_t* auxrecord, BYTE type, char* filename)
 {
-  int block_to_read = get_block_from_inode(current_dir->record->inodeNumber);
-  printf("[find_record_in_blockbuffer] block to read: %d\n", block_to_read);
+  INO_t *newinode;
+  int block_to_read = get_block_from_inode(&newinode, current_dir->record->inodeNumber);
+  printf("[find_record_in_blockbuffer] lendo bloco: %d\n", block_to_read);
   read_block(data_area + block_to_read*16);
 
   // debug_buffer_disk(1,1,0);
@@ -1312,9 +1435,9 @@ int find_record_in_blockbuffer(REC_t* auxrecord, BYTE type, char* filename)
     auxrecord->bytesFileSize = *((DWORD *)(blockbuffer + iterator*64 + 37));
     auxrecord->inodeNumber = *((int *)(blockbuffer + iterator*64 + 41));
 
-    if (auxrecord->TypeVal != 0x00 && (strcmp(filename, auxrecord->name) == 0))
+    if (auxrecord->TypeVal == type && (strcmp(filename, auxrecord->name) == 0))
     {
-      printf("[find_record_in_blockbuffer] %s ja existe\n", filename);
+      // printf("[find_record_in_blockbuffer] \"%s\" ja existe\n", filename);
       // printf("nome: %s\n", auxrecord->name);
       // printf("tipo: %x                >>|1: arquivo, 2: dir, 3: invalido|\n", auxrecord->TypeVal);
       // printf("blocks file size: %u\n", auxrecord->blocksFileSize);
@@ -1324,9 +1447,38 @@ int find_record_in_blockbuffer(REC_t* auxrecord, BYTE type, char* filename)
       return iterator-100;
     }
 
-    if (auxrecord->TypeVal == type)
+    // if (auxrecord->TypeVal == type)
+    // {
+    //   printf("[find_record_in_blockbuffer] record encontrado!\n");
+    //   return iterator*64;
+    // }
+    ++iterator;
+    // printf("%d\n", iterator);
+  }
+  return ERROR;
+}
+
+int find_free_record_in_blockbuffer(REC_t* auxrecord)
+{
+  INO_t *newinode;
+  int block_to_read = get_block_from_inode(&newinode, current_dir->record->inodeNumber);
+  printf("[find_free_record_in_blockbuffer] block to read: %d\n", block_to_read);
+  read_block(data_area + block_to_read*16);
+
+  // debug_buffer_disk(1,1,0);
+
+  int iterator = 0;
+  while (iterator < 64)
+  {
+
+    auxrecord->TypeVal = *((BYTE *)(blockbuffer + iterator*64));
+    strncpy(auxrecord->name, blockbuffer + iterator*64 + 1, 32);
+    auxrecord->blocksFileSize = *((DWORD *)(blockbuffer + iterator*64 + 33));
+    auxrecord->bytesFileSize = *((DWORD *)(blockbuffer + iterator*64 + 37));
+    auxrecord->inodeNumber = *((int *)(blockbuffer + iterator*64 + 41));
+    if (auxrecord->TypeVal == 0x00)
     {
-      printf("[find_record_in_blockbuffer] record encontrado!\n");
+      printf("[find_free_record_in_blockbuffer] record livre encontrado!\n");
       return iterator*64;
     }
     ++iterator;
@@ -1335,7 +1487,7 @@ int find_record_in_blockbuffer(REC_t* auxrecord, BYTE type, char* filename)
   return ERROR;
 }
 
-int get_block_from_inode(int inode)
+int get_block_from_inode(INO_t* newinode, int inode)
 {
   int offset = inode*16;
   int block_to_read = 0;
@@ -1344,16 +1496,16 @@ int get_block_from_inode(int inode)
     offset = offset - 4096;
     ++block_to_read;
   }
-  read_block(inode_area + block_to_read*256);
+  read_block(inode_area + block_to_read*16);
+  // debug_buffer_disk(1,0,0);
 
-  INO_t newinode;
+  // printf("asdasdsa %d %d\n", inode, offset);
+  newinode->dataPtr[0] = *((int *)(blockbuffer + offset));
+  newinode->dataPtr[1] = *((int *)(blockbuffer + offset + 4));
+  newinode->singleIndPtr = *((int *)(blockbuffer + offset + 8));
+  newinode->doubleIndPtr = *((int *)(blockbuffer + offset + 12));
 
-  newinode.dataPtr[0] = *((int *)(blockbuffer + offset));
-  newinode.dataPtr[1] = *((int *)(blockbuffer + offset + 4));
-  newinode.singleIndPtr = *((int *)(blockbuffer + offset + 8));
-  newinode.doubleIndPtr = *((int *)(blockbuffer + offset + 12));
-
-  printf("[get_block_from_inode] pointers found for inode %d: %d %d %d %d\n", inode, newinode.dataPtr[0], newinode.dataPtr[1], newinode.singleIndPtr, newinode.doubleIndPtr);
+  printf("[get_block_from_inode] inode %d tem como bloco inicial: %d\n", inode, newinode->dataPtr[0]);
 
   // int pointer = newinode.doubleIndPtr;
   // if (pointer == INVALID_PTR)
@@ -1374,7 +1526,7 @@ int get_block_from_inode(int inode)
   // }
 
   // return pointer;
-  return newinode.dataPtr[0];
+  return newinode->dataPtr[0];
 }
 
 int populate_dir_struct_from_block(int block)
@@ -1477,4 +1629,56 @@ void show_open_files_data()
   printf("handle (inode): %d\n", current_file->inode);
   current_file = current_file->nextfile;
   } while (current_file != -1);
+}
+
+int check_open_file(int inode)
+{
+  current_file = &open_files;
+  do
+  {
+    if (current_file->inode == inode)
+    {
+      return ERROR;
+    }
+    current_file = current_file->nextfile;
+  } while (current_file != -1);
+  return SUCCESS;
+}
+
+int delete_record_from_buffer(char* filename)
+{
+
+  // debug_buffer_disk(1,1,0);
+  REC_t auxrecord;
+  int iterator = 0;
+  while (iterator < 64)
+  {
+
+    auxrecord.TypeVal = *((BYTE *)(blockbuffer + iterator*64));
+    strncpy(auxrecord.name, blockbuffer + iterator*64 + 1, 32);
+    auxrecord.blocksFileSize = *((DWORD *)(blockbuffer + iterator*64 + 33));
+    auxrecord.bytesFileSize = *((DWORD *)(blockbuffer + iterator*64 + 37));
+    auxrecord.inodeNumber = *((int *)(blockbuffer + iterator*64 + 41));
+
+    if (auxrecord.TypeVal != 0x00 && (strcmp(filename, auxrecord.name) == 0))
+    {
+
+      printf("[delete_record_from_buffer] %s encontrado\n", auxrecord.name);
+      auxrecord.TypeVal = 0x00;
+      strncpy(auxrecord.name, "\0", 32);
+      auxrecord.blocksFileSize = INVALID_PTR;
+      auxrecord.bytesFileSize = INVALID_PTR;
+      auxrecord.inodeNumber = INVALID_PTR;
+
+      memcpy((blockbuffer + iterator*64), &auxrecord.TypeVal, sizeof(BYTE));
+      memcpy((blockbuffer + iterator*64 + 1), &auxrecord.name, 32*sizeof(char));
+      memcpy((blockbuffer + iterator*64 + 33), &auxrecord.blocksFileSize, sizeof(DWORD));
+      memcpy((blockbuffer + iterator*64 + 37), &auxrecord.bytesFileSize, sizeof(DWORD));
+      memcpy((blockbuffer + iterator*64 + 41), &auxrecord.inodeNumber, sizeof(int));
+
+      return SUCCESS;
+    }
+    ++iterator;
+  }
+  return ERROR;
 }
