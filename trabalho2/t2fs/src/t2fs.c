@@ -73,7 +73,7 @@ typedef struct open_files_struct OPEN_t;
 struct open_files_struct {
   int     filesopen;
   int     inode;
-  char    name[32];
+  // char    name[32];
   OPEN_t* nextfile;
 };
 
@@ -88,6 +88,9 @@ int create_inode_write_to_disk(int freeblock, int freeinode);
 int create_record_write_to_disk(int freeblock, int freeinode, char* filename);
 int find_record_in_blockbuffer(REC_t* auxrecord, BYTE type, char* filename);
 int get_block_from_inode(int inode);
+void show_open_files_data();
+void testar_ler_records_bloco_qualquer();
+int populate_dir_struct_from_block(int block);
 
 static int disk_initialized = 0;
 unsigned char buffer[SECTOR_SIZE];
@@ -257,7 +260,6 @@ void disk_init()
   if(root.filho)
   {
     current_dir = root.filho;
-        printf("asd*****: %s\n", current_dir->name);
     printf("[disk_info] subdiretorios na raiz: \n");
     do
     {
@@ -388,10 +390,10 @@ FILE2 create2 (char *filename)
     return ERROR;
   }
 
-  printf("\n\n********\n");
+  // printf("\n\n********\n");
   // debug_buffer_disk(0, 1, current_dir->record_block);
-  printf("\n\n********\n");
-
+  // printf("\n\n********\n");
+  printf("[create2] \"%s\" criado com sucesso\n", filename);
   return freeinode;
 }
 /*-----------------------------------------------------------------------------
@@ -458,6 +460,7 @@ FILE2 open2 (char *filename)
         printf("[open2] %s nao eh um caminho valido\n", filename);
       }
   printf("[open2] arquivos abertos: %d\n", open_files.filesopen);
+  // show_open_files_data();
   return handle;
 }
 
@@ -676,20 +679,26 @@ DIR2 opendir2 (char *pathname)
     disk_init();
   }
 
-  printf("[opendir2] abrindo diretorio: \"%s\"\n", pathname);
-  current_dir = root.filho;
-  path_exists(pathname, 1);
-
-  printf("[opendir2] diretorio atual: %s\n", current_dir->name);
-
   if(pathname == NULL)
   {
     return ERROR;
   }
 
-  int handle;
+  DIR_t* backup;
+  backup = current_dir;
 
-  return handle;
+  printf("[opendir2] abrindo diretorio: \"%s\"\n", pathname);
+
+  current_dir = root.filho;
+
+  if (path_exists(pathname, 1) == -1){
+    current_dir = backup;
+    return ERROR;
+  }
+
+  printf("[opendir2] diretorio atual: %s\n", current_dir->name);
+
+  return current_dir->record->inodeNumber;
 }
 
 
@@ -893,29 +902,31 @@ int get_file_inode(char *filename)
   //   current_dir = current_dir->pai;
   // }
   printf("[get_file_inode] procurando por \"%s\" como arquivo em %s\n", filename, current_dir->name);
-  int dir_inode = current_dir->record->inodeNumber;
-  int sector_to_read;
-  div_t output = div(dir_inode, 256);
-  sector_to_read = inode_area + output.quot;
+  // int dir_inode = current_dir->record->inodeNumber;
+  // int sector_to_read;
+  // div_t output = div(dir_inode, 256);
+  // sector_to_read = inode_area + output.quot;
 
-  printf("[get_file_inode] inode area sector: %d\n", inode_area);
-  printf("[get_file_inode] sector to read: %d\n", sector_to_read);
-  printf("[get_file_inode] dir inode number: %d\n", dir_inode);
+  // printf("[get_file_inode] inode area sector: %d\n", inode_area);
+  // printf("[get_file_inode] sector to read: %d\n", sector_to_read);
+  // printf("[get_file_inode] dir inode number: %d\n", dir_inode);
 
-  // lendo inode do diretorio atual
-  read_sector(sector_to_read, buffer);
+  // // lendo inode do diretorio atual
+  // read_sector(sector_to_read, buffer);
 
-  INO_t* inode_aux = malloc(sizeof(INO_t));
-  inode_aux->dataPtr[0] = *((int *)(buffer + dir_inode*16));
-  inode_aux->dataPtr[1] = *((int *)(buffer + dir_inode*16 + 4));
-  inode_aux->singleIndPtr = *((int *)(buffer + dir_inode*16 + 8));
-  inode_aux->doubleIndPtr = *((int *)(buffer + dir_inode*16 + 12));
-  current_inode = inode_aux;
-  printf("[get_file_inode] pointers: %d %d %d %d\n", inode_aux->dataPtr[0], inode_aux->dataPtr[1], inode_aux->singleIndPtr, inode_aux->doubleIndPtr);
+  // debug_buffer_disk(1,1,sector_to_read);
+
+  // INO_t* inode_aux = malloc(sizeof(INO_t));
+  // inode_aux->dataPtr[0] = *((int *)(buffer + dir_inode*16));
+  // inode_aux->dataPtr[1] = *((int *)(buffer + dir_inode*16 + 4));
+  // inode_aux->singleIndPtr = *((int *)(buffer + dir_inode*16 + 8));
+  // inode_aux->doubleIndPtr = *((int *)(buffer + dir_inode*16 + 12));
+  // current_inode = inode_aux;
+  // printf("[get_file_inode] pointers: %d %d %d %d\n", inode_aux->dataPtr[0], inode_aux->dataPtr[1], inode_aux->singleIndPtr, inode_aux->doubleIndPtr);
 
   // ler bloco de dados do diretorio atual para procurar arquivo
 
-  sector_to_read = data_area + inode_aux->dataPtr[0];
+  int sector_to_read = data_area + current_dir->dir_block*16;
   // printf("%d\n", sector_to_read);
 
   read_block(sector_to_read);
@@ -984,7 +995,7 @@ int update_open_files(int inode_number)
     open_files.nextfile = -1;
     open_files.filesopen++;
   } else {
-    for (i = 0; i < iterator; ++i)
+    for (i = 1; i < iterator; ++i)
     {
       current_file = current_file->nextfile;
     }
@@ -993,8 +1004,9 @@ int update_open_files(int inode_number)
     current_file->nextfile = aux_file;
     open_files.filesopen++;
     aux_file->inode = inode_number;
-    strcpy(aux_file->name, current_record->name);
     aux_file->nextfile = -1;
+
+    return aux_file->inode;
   }
 
   printf("[update_open_files] arquivo aberto tem inode: %d \n", current_file->inode);
@@ -1157,7 +1169,7 @@ int create_inode_write_to_disk(int freeblock, int freeinode)
     printf("erro ao escrever inode no buffer\n");
   }
 
-  printf("%d %d %d %d\n", newinode.dataPtr[0], newinode.dataPtr[1], newinode.singleIndPtr, newinode.doubleIndPtr);
+  // printf("%d %d %d %d\n", newinode.dataPtr[0], newinode.dataPtr[1], newinode.singleIndPtr, newinode.doubleIndPtr);
 
   // debug_buffer_disk(1,0,0);
 
@@ -1230,7 +1242,7 @@ int find_record_in_blockbuffer(REC_t* auxrecord, BYTE type, char* filename)
   printf("[find_record_in_blockbuffer] block to read: %d\n", block_to_read);
   read_block(data_area + block_to_read*16);
 
-  debug_buffer_disk(1,1,0);
+  // debug_buffer_disk(1,1,0);
 
   int iterator = 0;
   while (iterator < 64)
@@ -1352,7 +1364,7 @@ int populate_dir_struct_from_block(int block)
   }
 }
 
-void testesss()
+void testar_ler_records_bloco_qualquer()
 {
   int block = 2;
   read_block(data_area + block*16);
@@ -1396,4 +1408,15 @@ void testesss()
     }
     ++iterator;
   }
+}
+
+void show_open_files_data()
+{
+  current_file = &open_files;
+  printf("files open: %d\n", current_file->filesopen);
+  do
+  {
+  printf("handle (inode): %d\n", current_file->inode);
+  current_file = current_file->nextfile;
+  } while (current_file != -1);
 }
