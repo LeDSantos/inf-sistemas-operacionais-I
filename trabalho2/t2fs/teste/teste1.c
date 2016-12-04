@@ -27,8 +27,10 @@ int main(int argc, const char * argv[]) {
   open2("file");
   open2("/sub/file");
   create2("/sub/file");
-  open2("/arq");
-  open2("/sub/arq2");
+  int arq = open2("/arq");
+  int arq2 = open2("/sub/arq2");
+  close2(arq);
+  close2(arq2);
 
   return 0;
 }

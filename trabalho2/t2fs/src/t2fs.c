@@ -461,7 +461,7 @@ FILE2 open2 (char *filename)
       }
   printf("[open2] arquivos abertos: %d\n", open_files.filesopen);
   // show_open_files_data();
-  return handle;
+  return current_record->inodeNumber;
 }
 
 
@@ -480,12 +480,28 @@ int close2 (FILE2 handle)
     disk_init();
   }
 
-  if(handle = NULL)
+  if(handle == NULL || handle < 0)
   {
+    printf("[close2] handle nao possui valor positivo: %d; tente novamente\n", handle);
     return ERROR;
   }
 
-  return SUCCESS;
+  printf("[close2] procurando arquivo com handle: %d\n", (int)handle);
+  current_file = &open_files;
+  do
+  {
+    if (current_file->inode == handle)
+    {
+      current_file->inode = INVALID_PTR;
+      open_files.filesopen--;
+      printf("[close2] arquivo fechado com sucesso\n");
+      printf("[close2] arquivos abertos: %d\n", open_files.filesopen);
+      return 0;
+    }
+    current_file = current_file->nextfile;
+  } while (current_file != -1);
+  printf("[close2] nao existe arquivo aberto com handle: %d\n", handle);
+  return ERROR;
 }
 
 /*-----------------------------------------------------------------------------
@@ -825,7 +841,7 @@ int path_exists(char* filename, int type)
         printf("[path_exists] \"%s\" encontrado!\n", searching_for1);
         if (!current_dir->filho)
         {
-            printf("e nao tem subdiretorios\n");
+            printf("[path_exists] e nao tem subdiretorios\n");
           if (!current_dir)
           {
             current_dir = found;
