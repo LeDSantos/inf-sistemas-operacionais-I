@@ -35,8 +35,9 @@ int main(int argc, const char * argv[]) {
   delete2("/arq2");
   delete2("/sub/file");
   create2("/sub/file2");
-  // debug_buffer_disk(0,1,0);
-  // debug_buffer_disk(0,1,2);
+
+  debug_buffer_disk(0,1,0);
+  debug_buffer_disk(0,1,2);
   // debug_buffer_disk(0,0,0);
 
   arq = open2("arq");
@@ -44,7 +45,19 @@ int main(int argc, const char * argv[]) {
   int size = 64;
   char buffer[size];
   int leu = read2(arq, buffer, size);
+  int i = 0;
+  for (i = leu; i >= 0; --i)
+  {
+    leu = read2(arq, buffer, size);
+    printf("leu %d bytes de %d pedidos: %s\n", leu, size, buffer);
+    seek2(arq, i);
+    truncate2(arq);
+  }
+
+  leu = read2(arq2, buffer, size);
   printf("leu %d bytes de %d pedidos: %s\n", leu, size, buffer);
+  seek2(arq2, 35);
+  truncate2(arq2);
   leu = read2(arq2, buffer, size);
   printf("leu %d bytes de %d pedidos: %s\n", leu, size, buffer);
 
@@ -62,7 +75,8 @@ int main(int argc, const char * argv[]) {
   readdir2(sub, &dir);
   readdir2(sub, &dir);
   readdir2(sub, &dir);
-
+  readdir2(sub, &dir);
+  readdir2(sub, &dir);
   // OK, tudo funcionou ate aqui
 
   // rmdir2("/sub");

@@ -74,6 +74,7 @@ struct open_files_struct {
   int     filesopen;
   int     inode;
   int     record_block;
+  char    name[32];
   int     size;
   int     offset;
   BYTE    type;
@@ -608,6 +609,7 @@ int read2 (FILE2 handle, char *buffer, int size)
     return ERROR;
   }
 
+  memset(buffer, 0, size*1);
   memcpy(buffer, blockbuffer, filesize*1);
 
   printf("\n\n");
@@ -655,7 +657,37 @@ Saída:  Se a operação foi realizada com sucesso, a função retorna "0" (zero
 -----------------------------------------------------------------------------*/
 int truncate2 (FILE2 handle)
 {
+  if(disk_initialized == 0)
+  {
+    disk_init();
+  }
 
+  printf("[truncate2] procurando arquivo de handle: %d\n", handle);
+
+  if(check_open_file(handle) == 0)
+  {
+    printf("[truncate2] nao existe arquivo aberto com handle %d\n", handle);
+    return ERROR;
+  }
+  int offset = current_file->offset;
+  printf("[truncate2] pointer esta posicionado em %d bytes, truncando arquivo\n", offset);
+
+  INO_t auxinode;
+  int block = get_block_from_inode(&auxinode, handle);
+  read_block(data_area + block*16);
+  char currentbuffer[offset];
+  memcpy(currentbuffer, blockbuffer, offset*1);
+  memset(blockbuffer, 0, 4096);
+  memcpy(blockbuffer, currentbuffer, offset*1);
+  write_block(data_area + block*16);
+
+  read_block(data_area + current_file->record_block*16);
+  update_record_filesize_on_buffer(current_file->name);
+  write_block(data_area + current_file->record_block*16);
+  if (current_file->size > offset)
+    current_file->size = offset;
+
+  printf("[truncate2] arquivo truncado com sucesso!\n");
   printf("\n\n");
   return SUCCESS;
 }
@@ -689,8 +721,12 @@ int seek2 (FILE2 handle, DWORD offset)
     return ERROR;
   }
 
-  // get_block_from_inode
+  if (offset == -1)
+  {
+    current_file->offset = current_file->size;
+  } else current_file->offset = offset;
 
+  printf("[seek2] pointer posicionado em %d bytes\n", current_file->offset);
   printf("\n\n");
   return SUCCESS;
 }
@@ -1004,6 +1040,8 @@ int readdir2 (DIR2 handle, DIRENT2 *dentry)
   if (read_all_records_in_blockbuffer(block, dentry) != 0)
   {
     printf("[readdir2] fim dos recors validos para este diretorio\n");
+    current_file->offset = 0;
+    return SUCCESS;
   }
   current_file->offset++;
 
@@ -1269,6 +1307,7 @@ int update_open_files(int inode_number, BYTE type)
     if (update_open_from_opendir == 0)
     {
       open_files.size = current_record->bytesFileSize;
+      strcpy(open_files.name, current_record->name);
     }
 
     // printf("%s %d %s %d %d\n", current_dir->name, open_files.inode, open_files.record_block, open_files.size, open_files.type);
@@ -1287,7 +1326,7 @@ int update_open_files(int inode_number, BYTE type)
     aux_file->nextfile = NULL;
     aux_file->offset = 0;
 
-    char *raiz = "root";
+    char *raiz = "raiz";
     if (strcmp(current_dir->name, raiz) == 0)
     {
       aux_file->record_block = 0;
@@ -1296,6 +1335,7 @@ int update_open_files(int inode_number, BYTE type)
     if (update_open_from_opendir == 0)
     {
       aux_file->size = current_record->bytesFileSize;
+      strcpy(aux_file->name, current_record->name);
     }
     // printf("%s %d %s %d %d\n", current_dir->name, open_files.inode, open_files.record_block, open_files.size, open_files.type);
 
@@ -1604,11 +1644,10 @@ if (type == 0x02) //é dir
 
 int find_record_in_blockbuffer(REC_t* auxrecord, BYTE type, char* filename)
 {
-  INO_t *newinode;
-  int block_to_read = get_block_from_inode(&newinode, current_dir->record->inodeNumber);
-  // printf("[find_record_in_blockbuffer] lendo bloco: %d\n", block_to_read);
-  read_block(data_area + block_to_read*16);
-
+    INO_t newinode;
+    int block_to_read = get_block_from_inode(&newinode, current_dir->record->inodeNumber);
+    // printf("[find_record_in_blockbuffer] lendo bloco: %d\n", block_to_read);
+    read_block(data_area + block_to_read*16);
 
   int iterator = 0;
   while (iterator < 64)
@@ -1620,9 +1659,15 @@ int find_record_in_blockbuffer(REC_t* auxrecord, BYTE type, char* filename)
     auxrecord->bytesFileSize = *((DWORD *)(blockbuffer + iterator*64 + 37));
     auxrecord->inodeNumber = *((int *)(blockbuffer + iterator*64 + 41));
 
+
     if (auxrecord->TypeVal == type && (strcmp(filename, auxrecord->name) == 0))
     {
 
+  //    printf("nome: %s\n", auxrecord->name);
+  // printf("tipo: %x                >>|1: arquivo, 2: dir, 3: invalido|\n", auxrecord->TypeVal);
+  // printf("blocks file size: %u\n", auxrecord->blocksFileSize);
+  // printf("bytes file size: %u\n", auxrecord->bytesFileSize);
+  // printf("inode number: %d\n\n", auxrecord->inodeNumber);
 
       return iterator-100;
     }
@@ -1891,6 +1936,32 @@ int read_all_records_in_blockbuffer(int block, DIRENT2* dirent)
       strcpy(dirent->name, auxrecord.name);
       dirent->fileType = auxrecord.TypeVal;
       dirent->fileSize = auxrecord.bytesFileSize;
+
+      return SUCCESS;
+    }
+    ++iterator;
+  }
+  return ERROR;
+}
+
+int update_record_filesize_on_buffer(char* filename)
+{
+  REC_t auxrecord;
+  int iterator = 0;
+  while (iterator < 64)
+  {
+
+    auxrecord.TypeVal = *((BYTE *)(blockbuffer + iterator*64));
+    strncpy(auxrecord.name, blockbuffer + iterator*64 + 1, 32);
+    auxrecord.blocksFileSize = *((DWORD *)(blockbuffer + iterator*64 + 33));
+    auxrecord.bytesFileSize = *((DWORD *)(blockbuffer + iterator*64 + 37));
+    auxrecord.inodeNumber = *((int *)(blockbuffer + iterator*64 + 41));
+
+    if (auxrecord.TypeVal != 0x00 && (strcmp(filename, auxrecord.name) == 0))
+    {
+      printf("[update_record_filesize_on_buffer] %s sendo atualizado\n", auxrecord.name);
+      auxrecord.bytesFileSize = current_file->offset;
+      memcpy((blockbuffer + iterator*64 + 37), &auxrecord.bytesFileSize, sizeof(DWORD));
 
       return SUCCESS;
     }
