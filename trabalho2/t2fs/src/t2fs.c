@@ -73,6 +73,8 @@ typedef struct open_files_struct OPEN_t;
 struct open_files_struct {
   int     filesopen;
   int     inode;
+  int     record_block;
+  int     size;
   BYTE    type;
   OPEN_t* nextfile;
 };
@@ -110,6 +112,8 @@ OPEN_t* current_file;
 OPEN_t open_files;
 REC_t global_record;
 INO_t global_inode;
+int current_pointer;
+int update_open_from_opendir;
 /*
 ** inicializa t2fs
 ** criacao do superbloco
@@ -164,8 +168,8 @@ void disk_init()
   disk_info();
 
   open_files.filesopen = 0;
-  open_files.inode = INVALID_PTR;
-  open_files.nextfile = INVALID_PTR;
+  open_files.inode = NULL;
+  open_files.nextfile = NULL;
 
   // verificar o que já existe no disco
   // inicializar estruturas auxiliares para percorrer diretorios
@@ -582,7 +586,9 @@ int read2 (FILE2 handle, char *buffer, int size)
     return ERROR;
   }
 
-  printf("[read2] arquivo encontrado, lendo %d bytes do arquivo\n", size);
+  int filesize = current_file->size;
+
+  printf("[read2] arquivo encontrado, lendo %d bytes do arquivo\n", filesize);
 
   int block_to_read = get_block_from_inode(&global_inode, handle);
   if (block_to_read < 0)
@@ -597,11 +603,9 @@ int read2 (FILE2 handle, char *buffer, int size)
     return ERROR;
   }
 
-  memcpy(buffer, blockbuffer, size*1);
+  memcpy(buffer, blockbuffer, filesize*1);
 
-  int bytesread = 0;
-
-  return bytesread;
+  return filesize;
 }
 
 
@@ -624,10 +628,6 @@ int write2 (FILE2 handle, char *buffer, int size)
     disk_init();
   }
 
-  if(handle = NULL)
-  {
-    return ERROR;
-  }
   int byteswritten;
 
   return byteswritten;
@@ -671,11 +671,6 @@ int seek2 (FILE2 handle, DWORD offset)
   if(disk_initialized == 0)
   {
     disk_init();
-  }
-
-  if(handle = NULL)
-  {
-    return ERROR;
   }
 
   return SUCCESS;
@@ -939,8 +934,10 @@ DIR2 opendir2 (char *pathname)
     return current_dir->record->inodeNumber;
   }
 
+  update_open_from_opendir = 1;
   if(update_open_files(current_dir->record->inodeNumber, current_dir->record->TypeVal) < 0)
     return ERROR;
+  update_open_from_opendir = 0;
 
 
 
@@ -970,11 +967,7 @@ int readdir2 (DIR2 handle, DIRENT2 *dentry)
     disk_init();
   }
 
-  if(handle = NULL)
-  {
-    setInvalid(dentry);
-    return ERROR;
-  }
+
 
   return SUCCESS;
 }
@@ -1088,7 +1081,7 @@ int path_exists(char* filename, int type)
 
     } else if (iterator < dirs) // current_dir->filho == NULL &&
       {
-        printf("[path_exists] \"%s\" encontrado!\n", searching_for1);
+        printf("\n[path_exists] \"%s\" encontrado!\n", searching_for1);
         if (!current_dir->filho)
         {
             printf("[path_exists] e nao tem subdiretorios\n");
@@ -1161,7 +1154,7 @@ int path_parser(char* path, char* pathfound)
 
 int get_file_inode(char *filename)
 {
-  printf("[get_file_inode] procurando por \"%s\" como arquivo em %s\n", filename, current_dir->name);
+  printf("\n[get_file_inode] procurando por \"%s\" como arquivo em %s\n", filename, current_dir->name);
 
 
   int sector_to_read = data_area + current_dir->dir_block*16;
@@ -1223,8 +1216,20 @@ int update_open_files(int inode_number, BYTE type)
   {
     open_files.inode = inode_number;
     open_files.type = type;
-    open_files.nextfile = -1;
+    open_files.nextfile = NULL;
     open_files.filesopen++;
+    char *raiz = "raiz";
+    if (strncmp(current_dir->name, raiz, 4) == 0)
+    {
+      open_files.record_block = 0;
+    } else open_files.record_block = current_dir->record_block;
+
+    if (update_open_from_opendir == 0)
+    {
+      open_files.size = current_record->bytesFileSize;
+    }
+
+    printf("%s %d %s %d %d\n", current_dir->name, open_files.inode, open_files.record_block, open_files.size, open_files.type);
 
   } else {
     for (i = 1; i < iterator; ++i)
@@ -1237,7 +1242,19 @@ int update_open_files(int inode_number, BYTE type)
     open_files.filesopen++;
     aux_file->inode = inode_number;
     aux_file->type = type;
-    aux_file->nextfile = -1;
+    aux_file->nextfile = NULL;
+
+    char *raiz = "root";
+    if (strcmp(current_dir->name, raiz) == 0)
+    {
+      aux_file->record_block = 0;
+    } else aux_file->record_block = current_dir->record_block;
+
+    if (update_open_from_opendir == 0)
+    {
+      aux_file->size = current_record->bytesFileSize;
+    }
+    printf("%s %d %s %d %d\n", current_dir->name, open_files.inode, open_files.record_block, open_files.size, open_files.type);
 
   }
 
@@ -1764,7 +1781,7 @@ int check_open_file(int inode)
       return ERROR;
     }
     current_file = current_file->nextfile;
-  } while (current_file != -1);
+  } while (current_file != NULL);
   return SUCCESS;
 }
 

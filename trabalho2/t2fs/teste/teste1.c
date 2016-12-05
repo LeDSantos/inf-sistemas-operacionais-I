@@ -44,10 +44,10 @@ int main(int argc, const char * argv[]) {
   arq2 = open2("/sub/arq2");
   int size = 64;
   char buffer[size];
-  read2(arq, buffer, size);
-  printf("%s\n", buffer);
-  read2(arq2, buffer, size);
-  printf("%s\n", buffer);
+  int leu = read2(arq, buffer, size);
+  printf("leu %d bytes de %d pedidos: %s\n", leu, size, buffer);
+  leu = read2(arq2, buffer, size);
+  printf("leu %d bytes de %d pedidos: %s\n", leu, size, buffer);
 
   // rmdir2("/sub");
   // mkdir2("/dae");
