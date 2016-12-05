@@ -12,9 +12,9 @@
 
 int main(int argc, const char * argv[]) {
 
-  debug_buffer_disk(0,1,0);
-  debug_buffer_disk(0,1,2);
-  debug_buffer_disk(0,0,0);
+  // debug_buffer_disk(0,1,0);
+  // debug_buffer_disk(0,1,2);
+  // debug_buffer_disk(0,0,0);
 
   create2("/file");
   int sub = opendir2("/sub/");
@@ -35,9 +35,9 @@ int main(int argc, const char * argv[]) {
   delete2("/arq2");
   delete2("/sub/file");
   create2("/sub/file2");
-  debug_buffer_disk(0,1,0);
-  debug_buffer_disk(0,1,2);
-  debug_buffer_disk(0,0,0);
+  // debug_buffer_disk(0,1,0);
+  // debug_buffer_disk(0,1,2);
+  // debug_buffer_disk(0,0,0);
 
   arq = open2("arq");
   arq2 = open2("/sub/arq2");
