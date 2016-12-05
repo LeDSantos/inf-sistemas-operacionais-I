@@ -38,14 +38,15 @@ int main(int argc, const char * argv[]) {
   debug_buffer_disk(0,1,0);
   debug_buffer_disk(0,1,2);
   debug_buffer_disk(0,0,0);
-  // OK, tudo funcionou ate aqui
 
-  arq = open2("/arq");
-  show_open_files_data();
-  printf("arq: %d\n", arq);
+  // OK, tudo funcionou ate aqui
+  arq = open2("arq");
+  arq2 = open2("/sub/arq2");
   int size = 64;
   char buffer[size];
   read2(arq, buffer, size);
+  printf("%s\n", buffer);
+  read2(arq2, buffer, size);
   printf("%s\n", buffer);
 
   // rmdir2("/sub");

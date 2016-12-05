@@ -754,26 +754,14 @@ int mkdir2 (char *pathname)
   {
     printf("[mkdir2] falha ao criar record\n");
 
-    // printf("***********\n");
-    // debug_buffer_disk(0,0,0);
-    // printf("***********\n");
-
     return ERROR;
   }
-
-  // printf("***********\n");
-  // debug_buffer_disk(0,0,0);
-  // printf("***********\n");
 
   if (create_inode_write_to_disk(freeblock, freeinode) != 0)
   {
     printf("[mkdir2] falha ao escrever inode no disco\n");
     return ERROR;
   }
-
-  // printf("\n\n********\n");
-  // debug_buffer_disk(0,1,current_dir->record_block);
-  // printf("\n\n********\n");
 
   if (setBitmap2 (BITMAP_INODE, freeinode, 1) < 0)
   {
@@ -786,10 +774,6 @@ int mkdir2 (char *pathname)
     printf("[mkdir2] falha o setar bitmap bloco\n");
     return ERROR;
   }
-
-  // printf("\n\n********\n");
-  // debug_buffer_disk(0, 1, current_dir->record_block);
-  // printf("\n\n********\n");
 
   // int update_directory_struct()
 
@@ -843,15 +827,11 @@ int rmdir2 (char *pathname)
   int found = find_record_in_blockbuffer(&global_record, 0x02, name);
   if (found < -1)
   {
-    // printf("**************************** %d %d\n", found, global_record.inodeNumber);
     if (check_open_file(global_record.inodeNumber) == -1)
     {
       printf("[rmdir2] nao eh possivel deletar um arquivo aberto\n");
       return ERROR;
     }
-
-    // debug_buffer_disk(0,1,0);
-    // debug_buffer_disk(1,1,0);
 
     if (delete_record_from_buffer(name) != 0)
     {
@@ -864,14 +844,11 @@ int rmdir2 (char *pathname)
       printf("[rmdir2] falha ao remover no disco\n");
       return ERROR;
     }
-    // debug_buffer_disk(0,1,0);
-    // debug_buffer_disk(1,1,0);
 
     if(setBitmap2(BITMAP_INODE, global_record.inodeNumber, 0) != 0)
         return ERROR;
 
     get_block_from_inode(&global_inode, global_record.inodeNumber);
-    // printf("******ASDAS %d %d %d %d\n", global_inode.dataPtr[0], global_inode.dataPtr[1], global_inode.singleIndPtr, global_inode.doubleIndPtr);
     if (global_inode.dataPtr[0] != -1)
     {
       if (setBitmap2(BITMAP_DADOS, global_inode.dataPtr[0], 0) != 0)
@@ -962,7 +939,6 @@ DIR2 opendir2 (char *pathname)
     return current_dir->record->inodeNumber;
   }
 
-  // int update = ;
   if(update_open_files(current_dir->record->inodeNumber, current_dir->record->TypeVal) < 0)
     return ERROR;
 
@@ -1085,8 +1061,7 @@ int path_exists(char* filename, int type)
       searching_for1_father = current_dir->pai->name;
       searching_for2 = current_dir->name;
       found = current_dir->pai;
-      printf("\n[path_exists] procurando por: %s dentro de %s ...\n", searching_for1, searching_for1_father);
-      // printf("%s %s\n", searching_for1, searching_for2);
+      // printf("\n[path_exists] procurando por: %s dentro de %s ...\n", searching_for1, searching_for1_father);
       if (strcmp(searching_for1, searching_for2) == 0)
       {
         encontrou = 1;
@@ -1098,7 +1073,7 @@ int path_exists(char* filename, int type)
 
     if (encontrou == 0)
     {
-      printf("[path_exists] %s nao e um diretorio\n", path[i]);
+      // printf("[path_exists] %s nao e um diretorio\n", path[i]);
       if (!current_dir)
       {
         current_dir = found;
@@ -1186,38 +1161,11 @@ int path_parser(char* path, char* pathfound)
 
 int get_file_inode(char *filename)
 {
-  // pegando o numero do inode do diretorio atual
-  // if (current_dir)
-  // {
-  //   current_dir = current_dir->pai;
-  // }
   printf("[get_file_inode] procurando por \"%s\" como arquivo em %s\n", filename, current_dir->name);
-  // int dir_inode = current_dir->record->inodeNumber;
-  // int sector_to_read;
-  // div_t output = div(dir_inode, 256);
-  // sector_to_read = inode_area + output.quot;
 
-  // printf("[get_file_inode] inode area sector: %d\n", inode_area);
-  // printf("[get_file_inode] sector to read: %d\n", sector_to_read);
-  // printf("[get_file_inode] dir inode number: %d\n", dir_inode);
-
-  // // lendo inode do diretorio atual
-  // read_sector(sector_to_read, buffer);
-
-  // debug_buffer_disk(1,1,sector_to_read);
-
-  // INO_t* inode_aux = malloc(sizeof(INO_t));
-  // inode_aux->dataPtr[0] = *((int *)(buffer + dir_inode*16));
-  // inode_aux->dataPtr[1] = *((int *)(buffer + dir_inode*16 + 4));
-  // inode_aux->singleIndPtr = *((int *)(buffer + dir_inode*16 + 8));
-  // inode_aux->doubleIndPtr = *((int *)(buffer + dir_inode*16 + 12));
-  // current_inode = inode_aux;
-  // printf("[get_file_inode] pointers: %d %d %d %d\n", inode_aux->dataPtr[0], inode_aux->dataPtr[1], inode_aux->singleIndPtr, inode_aux->doubleIndPtr);
-
-  // ler bloco de dados do diretorio atual para procurar arquivo
 
   int sector_to_read = data_area + current_dir->dir_block*16;
-  // printf("%d\n", sector_to_read);
+
 
   read_block(sector_to_read);
 
@@ -1235,13 +1183,6 @@ int get_file_inode(char *filename)
 
     if (auxrecord->TypeVal == 0x01)
     {
-      // printf("[get_file_inode] record encontrado:\n");
-      // printf("nome: %s\n", auxrecord->name);
-      // printf("tipo: %x                >>|1: arquivo, 2: dir, 3: invalido|\n", auxrecord->TypeVal);
-      // printf("blocks file size: %u\n", auxrecord->blocksFileSize);
-      // printf("bytes file size: %u\n", auxrecord->bytesFileSize);
-      // printf("inode number: %d\n\n", auxrecord->inodeNumber);
-
       if(strcmp(filename, auxrecord->name) == 0)
       {
         current_record = auxrecord;
@@ -1249,7 +1190,6 @@ int get_file_inode(char *filename)
       }
     }
     ++iterator;
-    // printf("%d\n", iterator);
   }
   if (current_record == NULL)
   {
@@ -1309,7 +1249,6 @@ int update_open_files(int inode_number, BYTE type)
 
 int read_block(int sector)
 {
-  // printf("lendo setor %d\n", sector);
   int i;
   int x = 0;
   for (i = 0; i < 16; ++i)
@@ -1325,7 +1264,6 @@ int read_block(int sector)
 
 int write_block(int sector)
 {
-  // printf("escrevendo no setor %d\n", sector);
   int i;
   int x = 0;
   for (i = 0; i < 16; ++i)
@@ -1480,13 +1418,6 @@ int create_inode_write_to_disk(int freeblock, int freeinode)
 
   INO_t newinode;
 
-  // newinode.dataPtr[0] = *((int *)(blockbuffer + offset));
-  // newinode.dataPtr[1] = *((int *)(blockbuffer + offset + 4));
-  // newinode.singleIndPtr = *((int *)(blockbuffer + offset + 8));
-  // newinode.doubleIndPtr = *((int *)(blockbuffer + offset + 12));
-
-  // printf("%d %d %d %d\n", newinode.dataPtr[0], newinode.dataPtr[1], newinode.singleIndPtr, newinode.doubleIndPtr);
-
   newinode.dataPtr[0] = freeblock;
   newinode.dataPtr[1] = INVALID_PTR;
   newinode.singleIndPtr = INVALID_PTR;
@@ -1505,10 +1436,6 @@ int create_inode_write_to_disk(int freeblock, int freeinode)
   {
     printf("erro ao escrever inode no buffer\n");
   }
-
-  // printf("%d %d %d %d\n", newinode.dataPtr[0], newinode.dataPtr[1], newinode.singleIndPtr, newinode.doubleIndPtr);
-
-  // debug_buffer_disk(1,0,0);
 
   if (write_block(inode_area) != 0)
       return ERROR;
@@ -1558,22 +1485,6 @@ int create_record_write_to_disk(int freeblock, int freeinode, char* filename, BY
   memcpy((blockbuffer + offset + 37), &auxrecord->bytesFileSize, sizeof(DWORD));
   memcpy((blockbuffer + offset + 41), &auxrecord->inodeNumber, sizeof(int));
 
-  // printf("\n\n********\n");
-  // debug_buffer_disk(1,1,0);
-  // printf("\n\n********\n");
-
-  // auxrecord->TypeVal = *((BYTE *)(blockbuffer + offset));
-  // strncpy(auxrecord->name, blockbuffer + offset + 1, 32);
-  // auxrecord->blocksFileSize = *((DWORD *)(blockbuffer + offset + 33));
-  // auxrecord->bytesFileSize = *((DWORD *)(blockbuffer + offset + 37));
-  // auxrecord->inodeNumber = *((int *)(blockbuffer + offset + 41));
-
-  // printf("[create_record_write_to_disk] record a ser criado:\n");
-  // printf("nome: %s\n", auxrecord->name);
-  // printf("tipo: %x                >>|1: arquivo, 2: dir, 3: invalido|\n", auxrecord->TypeVal);
-  // printf("blocks file size: %u\n", auxrecord->blocksFileSize);
-  // printf("bytes file size: %u\n", auxrecord->bytesFileSize);
-  // printf("inode number: %d\n\n", auxrecord->inodeNumber);
   if(write_block(data_area + current_block*16) != 0)
   {
     free(auxrecord);
@@ -1609,12 +1520,6 @@ if (type == 0x02) //é dir
         strncpy(newdir->name, newdir->record->name, 32);
 
         current_dir->irmao = newdir;
-        // printf("%s ***************\n", current_dir->name);
-        // printf("%s ***************\n", newdir->name);
-        // printf("%s ***************\n", newdir->pai->name);
-        // printf("%s ***************\n", newdir->pai->filho->name);
-        // printf("%s ***************\n", newdir->pai->filho->irmao->name);
-        // printf("%s ***************\n", newdir->record->name);
 
         return SUCCESS;
       } else if (current_dir->filho == NULL)
@@ -1628,18 +1533,6 @@ if (type == 0x02) //é dir
           current_dir->filho = newdir;
           return SUCCESS;
         }
-
-      // else if (current_dir->irmao == NULL)
-      //   {
-      //     newdir->pai = &root;
-      //     newdir->record_block = root.dir_block;
-      //     newdir->dir_block = current_block;
-      //     newdir->filho = NULL;
-      //     newdir->irmao = NULL;
-      //     newdir->record = auxrecord;
-      //     current_dir->filho = newdir;
-      //     return SUCCESS;
-      //   }
 
     free(newdir);
     printf("[create_record_write_to_disk] falha ao atualizar arvore de diretorios\n");
@@ -1656,7 +1549,6 @@ int find_record_in_blockbuffer(REC_t* auxrecord, BYTE type, char* filename)
   printf("[find_record_in_blockbuffer] lendo bloco: %d\n", block_to_read);
   read_block(data_area + block_to_read*16);
 
-  // debug_buffer_disk(1,1,0);
 
   int iterator = 0;
   while (iterator < 64)
@@ -1670,23 +1562,12 @@ int find_record_in_blockbuffer(REC_t* auxrecord, BYTE type, char* filename)
 
     if (auxrecord->TypeVal == type && (strcmp(filename, auxrecord->name) == 0))
     {
-      // printf("[find_record_in_blockbuffer] \"%s\" ja existe\n", filename);
-      // printf("nome: %s\n", auxrecord->name);
-      // printf("tipo: %x                >>|1: arquivo, 2: dir, 3: invalido|\n", auxrecord->TypeVal);
-      // printf("blocks file size: %u\n", auxrecord->blocksFileSize);
-      // printf("bytes file size: %u\n", auxrecord->bytesFileSize);
-      // printf("inode number: %d\n\n", auxrecord->inodeNumber);
+
 
       return iterator-100;
     }
 
-    // if (auxrecord->TypeVal == type)
-    // {
-    //   printf("[find_record_in_blockbuffer] record encontrado!\n");
-    //   return iterator*64;
-    // }
     ++iterator;
-    // printf("%d\n", iterator);
   }
   return ERROR;
 }
@@ -1697,8 +1578,6 @@ int find_free_record_in_blockbuffer(REC_t* auxrecord)
   int block_to_read = get_block_from_inode(&newinode, current_dir->record->inodeNumber);
   printf("[find_free_record_in_blockbuffer] block to read: %d\n", block_to_read);
   read_block(data_area + block_to_read*16);
-
-  // debug_buffer_disk(1,1,0);
 
   int iterator = 0;
   while (iterator < 64)
@@ -1715,7 +1594,6 @@ int find_free_record_in_blockbuffer(REC_t* auxrecord)
       return iterator*64;
     }
     ++iterator;
-    // printf("%d\n", iterator);
   }
   return ERROR;
 }
@@ -1730,9 +1608,7 @@ int get_block_from_inode(INO_t* newinode, int inode)
     ++block_to_read;
   }
   read_block(inode_area + block_to_read*16);
-  // debug_buffer_disk(1,0,0);
 
-  // printf("asdasdsa %d %d\n", inode, offset);
   newinode->dataPtr[0] = *((int *)(blockbuffer + offset));
   newinode->dataPtr[1] = *((int *)(blockbuffer + offset + 4));
   newinode->singleIndPtr = *((int *)(blockbuffer + offset + 8));
@@ -1740,25 +1616,6 @@ int get_block_from_inode(INO_t* newinode, int inode)
 
   printf("[get_block_from_inode] inode %d tem como bloco inicial: %d\n", inode, newinode->dataPtr[0]);
 
-  // int pointer = newinode.doubleIndPtr;
-  // if (pointer == INVALID_PTR)
-  // {
-  //   pointer = newinode.singleIndPtr;
-  // }
-  // if (pointer == INVALID_PTR)
-  // {
-  //   pointer = newinode.dataPtr[1];
-  // }
-  // if (pointer == INVALID_PTR)
-  // {
-  //   pointer = newinode.dataPtr[0];
-  // }
-  // if (pointer == INVALID_PTR)
-  // {
-  //   return ERROR;
-  // }
-
-  // return pointer;
   return newinode->dataPtr[0];
 }
 
@@ -1781,14 +1638,7 @@ int populate_dir_struct_from_block(int block)
     thisrecord->blocksFileSize = *((DWORD *)(blockbuffer + iterator*64 + 33));
     thisrecord->bytesFileSize = *((DWORD *)(blockbuffer + iterator*64 + 37));
     thisrecord->inodeNumber = *((int *)(blockbuffer + iterator*64 + 41));
-    //   printf("%d\n", iterator);
-    //   printf("[populate_dir_struct_from_block] dir encontrado:\n");
-    //   printf("nome: %s\n", thisrecord->name);
-    //   printf("tipo: %x                >>|1: arquivo, 2: dir, 3: invalido|\n", thisrecord->TypeVal);
-    //   printf("blocks file size: %u\n", thisrecord->blocksFileSize);
-    //   printf("bytes file size: %u\n", thisrecord->bytesFileSize);
-    //   printf("inode number: %d\n\n", thisrecord->inodeNumber);
-    // adicionar diretorios na estrutura para percorrer diretorios
+
     if (thisrecord->TypeVal == 0x02)
     {
 
@@ -1803,11 +1653,6 @@ int populate_dir_struct_from_block(int block)
         current_dir->filho = auxdir;
         auxdir->dir_block = get_block_from_inode(&global_inode, auxdir->record->inodeNumber);
 
-        // printf("%s ***************\n", current_dir->name);
-        // printf("%s ***************\n", auxdir->name);
-        // printf("%s ***************\n", auxdir->pai->name);
-        // printf("%s ***************\n", auxdir->pai->filho->name);
-        // printf("%s ***************\n", auxdir->record->name);
         auxblock = -1;
       } else if (auxblock != 0)
         {
@@ -1829,11 +1674,6 @@ int populate_dir_struct_from_block(int block)
 
           auxdir->dir_block = get_block_from_inode(&global_inode, auxdir->record->inodeNumber);
 
-          // printf("%s ***************\n", current_dir->name);
-          // printf("%s ***************\n", auxdir->name);
-          // printf("%s ***************\n", auxdir->pai->name);
-          // printf("%s ***************\n", auxdir->pai->filho->name);
-          // printf("%s ***************\n", auxdir->record->name);
 
           } else if (current_dir->filho == NULL)
             {
@@ -1846,11 +1686,6 @@ int populate_dir_struct_from_block(int block)
               current_dir->filho = auxdir;
               auxdir->dir_block = get_block_from_inode(&global_inode, auxdir->record->inodeNumber);
 
-              // printf("%s ***************\n", current_dir->name);
-              // printf("%s ***************\n", auxdir->name);
-              // printf("%s ***************\n", auxdir->pai->name);
-              // printf("%s ***************\n", auxdir->pai->filho->name);
-              // printf("%s ***************\n", auxdir->record->name);
             }
         } else
           {
@@ -1876,7 +1711,7 @@ void testar_ler_records_bloco_qualquer()
     thisrecord->blocksFileSize = *((DWORD *)(blockbuffer + iterator*64 + 33));
     thisrecord->bytesFileSize = *((DWORD *)(blockbuffer + iterator*64 + 37));
     thisrecord->inodeNumber = *((int *)(blockbuffer + iterator*64 + 41));
-    // adicionar diretorios na estrutura para percorrer diretorios
+
     if (thisrecord->TypeVal != 0x00)
     {
       printf("nome: %s\n", thisrecord->name);
@@ -1935,7 +1770,6 @@ int check_open_file(int inode)
 
 int delete_record_from_buffer(char* filename)
 {
-  // debug_buffer_disk(1,1,0);
   REC_t auxrecord;
   int iterator = 0;
   while (iterator < 64)
