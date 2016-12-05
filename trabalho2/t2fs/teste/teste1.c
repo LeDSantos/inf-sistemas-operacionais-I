@@ -31,17 +31,24 @@ int main(int argc, const char * argv[]) {
   closedir2(file);
   close2(file);
   close2(subfile);
-  delete2("/arq");
   create2("/arq2");
+  delete2("/arq2");
   delete2("/sub/file");
   create2("/sub/file2");
-  // rmdir2("/sub");
   debug_buffer_disk(0,1,0);
   debug_buffer_disk(0,1,2);
   debug_buffer_disk(0,0,0);
-
   // OK, tudo funcionou ate aqui
 
+  arq = open2("/arq");
+  show_open_files_data();
+  printf("arq: %d\n", arq);
+  int size = 64;
+  char buffer[size];
+  read2(arq, buffer, size);
+  printf("%s\n", buffer);
+
+  // rmdir2("/sub");
   // mkdir2("/dae");
   // mkdir2("/asd");
   // int dae = opendir2("/dae");

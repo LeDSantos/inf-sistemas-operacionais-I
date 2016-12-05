@@ -574,12 +574,32 @@ int read2 (FILE2 handle, char *buffer, int size)
     disk_init();
   }
 
-  if(handle = NULL)
+  printf("[read2] procurando arquivo de handle: %d\n", handle);
+
+  if(check_open_file(handle) == 0)
   {
+    printf("[read2] nao existe arquivo aberto com handle %d\n", handle);
     return ERROR;
   }
 
-  int bytesread;
+  printf("[read2] arquivo encontrado, lendo %d bytes do arquivo\n", size);
+
+  int block_to_read = get_block_from_inode(&global_inode, handle);
+  if (block_to_read < 0)
+  {
+    printf("[read2] arquivo possui bloco invalido\n");
+    return ERROR;
+  }
+
+  if (read_block(data_area + block_to_read*16))
+  {
+    printf("[read2] nao foi possivel ler bloco de dados do arquivo\n");
+    return ERROR;
+  }
+
+  memcpy(buffer, blockbuffer, size*1);
+
+  int bytesread = 0;
 
   return bytesread;
 }
