@@ -42,7 +42,7 @@ int main(int argc, const char * argv[]) {
 
   arq = open2("arq");
   arq2 = open2("/sub/arq2");
-  int size = 64;
+  int size = 80;
   char buffer[size];
   int leu = read2(arq, buffer, size);
   int i = 0;
@@ -78,6 +78,13 @@ int main(int argc, const char * argv[]) {
   readdir2(sub, &dir);
   readdir2(sub, &dir);
   // OK, tudo funcionou ate aqui
+
+  seek2(arq2, 10);
+  char *teste = "teste2";
+  strcpy(buffer, teste);
+  write2(arq2, buffer, strlen(teste));
+  leu = read2(arq2, buffer, size);
+  printf("leu %d bytes de %d pedidos: %s\n", leu, size, buffer);
 
   // rmdir2("/sub");
   // mkdir2("/dae");

@@ -609,11 +609,14 @@ int read2 (FILE2 handle, char *buffer, int size)
     return ERROR;
   }
 
-  memset(buffer, 0, size*1);
-  memcpy(buffer, blockbuffer, filesize*1);
+  memset(buffer, 0, strlen(buffer)*1);
+  memcpy(buffer, blockbuffer, size*1);
 
   printf("\n\n");
-  return filesize;
+  if (filesize < size)
+    return filesize;
+  else
+    return size;
 }
 
 
@@ -636,10 +639,46 @@ int write2 (FILE2 handle, char *buffer, int size)
     disk_init();
   }
 
-  int byteswritten;
+  printf("[write2] procurando arquivo de handle: %d\n", handle);
 
+  if(check_open_file(handle) == 0)
+  {
+    printf("[write2] nao existe arquivo aberto com handle %d\n\n\n", handle);
+    return ERROR;
+  }
+
+  int filesize = current_file->size;
+  int offset = current_file->offset;
+
+  printf("[write2] arquivo encontrado, pointer esta no byte %d do arquivo\n", current_file->offset);
+
+  int block_to_read = get_block_from_inode(&global_inode, handle);
+  if (block_to_read < 0)
+  {
+    printf("[write2] arquivo possui bloco invalido\n\n\n");
+    return ERROR;
+  }
+
+  if (read_block(data_area + block_to_read*16))
+  {
+    printf("[write2] nao foi possivel ler bloco de dados do arquivo\n\n\n");
+    return ERROR;
+  }
+
+  strncpy((blockbuffer + current_file->offset), buffer, size);
+  printf("%s\n", blockbuffer);
+  if (current_file->size < current_file->offset)
+  {
+    current_file->size = current_file->offset + strlen(buffer);
+
+  } else current_file->size = filesize + strlen(buffer);
+
+  current_file->offset++;
+  write_block(data_area + block_to_read*16);
+
+  printf("[write2] bytes escritos no arquivo com sucesso!\n");
   printf("\n\n");
-  return byteswritten;
+  return size;
 }
 
 
