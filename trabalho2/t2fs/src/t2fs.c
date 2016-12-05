@@ -371,6 +371,8 @@ int delete2 (char *filename)
     printf("[delete2] nome invalida\n");
     return ERROR;
   }
+
+  printf("[delete2] procurando arquivo: \"%s\"\n", filename);
   char *path[25];
   int dirs = path_parser(filename, &path);
   char *name = path[dirs-1];
@@ -1349,6 +1351,12 @@ void debug_buffer_disk(int area, int type, int bloco)
       newinode.singleIndPtr = *((int *)(blockbuffer + x*16 + 8));
       newinode.doubleIndPtr = *((int *)(blockbuffer + x*16 + 12));
 
+      if (newinode.dataPtr[1] == INVALID_PTR)
+      {
+        ++x;
+        continue;
+      }
+
       printf("%d %d %d %d\n", newinode.dataPtr[0], newinode.dataPtr[1], newinode.singleIndPtr, newinode.doubleIndPtr);
       ++x;
       }
@@ -1368,6 +1376,12 @@ void debug_buffer_disk(int area, int type, int bloco)
           newrecord.blocksFileSize = *((DWORD *)(blockbuffer + x*64 + 33));
           newrecord.bytesFileSize = *((DWORD *)(blockbuffer + x*64 + 37));
           newrecord.inodeNumber = *((int *)(blockbuffer + x*64 + 41));
+
+          if (newrecord.TypeVal == 0x00)
+          {
+            ++x;
+            continue;
+          }
 
           printf("%d %s %d %d %d\n", newrecord.TypeVal, newrecord.name, newrecord.blocksFileSize, newrecord.bytesFileSize, newrecord.inodeNumber);
           ++x;
@@ -1400,6 +1414,12 @@ void debug_buffer_disk(int area, int type, int bloco)
       newinode.singleIndPtr = *((int *)(blockbuffer + x*16 + 8));
       newinode.doubleIndPtr = *((int *)(blockbuffer + x*16 + 12));
 
+      if (newinode.dataPtr[1] == INVALID_PTR)
+      {
+        ++x;
+        continue;
+      }
+
       printf("%d %d %d %d\n", newinode.dataPtr[0], newinode.dataPtr[1], newinode.singleIndPtr, newinode.doubleIndPtr);
       ++x;
       }
@@ -1418,6 +1438,12 @@ void debug_buffer_disk(int area, int type, int bloco)
           newrecord.blocksFileSize = *((DWORD *)(blockbuffer + x*64 + 33));
           newrecord.bytesFileSize = *((DWORD *)(blockbuffer + x*64 + 37));
           newrecord.inodeNumber = *((int *)(blockbuffer + x*64 + 41));
+
+          if (newrecord.TypeVal == 0x00)
+          {
+            ++x;
+            continue;
+          }
 
           printf("%d %s %d %d %d\n", newrecord.TypeVal, newrecord.name, newrecord.blocksFileSize, newrecord.bytesFileSize, newrecord.inodeNumber);
           ++x;

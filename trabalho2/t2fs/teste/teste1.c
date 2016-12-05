@@ -12,14 +12,12 @@
 
 int main(int argc, const char * argv[]) {
 
-  // debug_buffer_disk(0,0,0);
-  // debug_buffer_disk(0,1,0);
-  // debug_buffer_disk(0,1,2);
+  debug_buffer_disk(0,1,0);
+  debug_buffer_disk(0,1,2);
+  debug_buffer_disk(0,0,0);
 
   create2("/file");
   int sub = opendir2("/sub/");
-  // create2("/sub/file");
-
   int file = open2("file");
   open2("/sub/file");
   create2("/sub/file");
@@ -33,19 +31,19 @@ int main(int argc, const char * argv[]) {
   closedir2(file);
   close2(file);
   close2(subfile);
-
-  // debug_buffer_disk(0,1,0);
-  // debug_buffer_disk(0,1,2);
   delete2("/arq");
-  // debug_buffer_disk(0,0,0);
+  create2("/arq2");
   delete2("/sub/file");
-  // OK, tudo funcionou ate aqui
+  create2("/sub/file2");
+  // rmdir2("/sub");
+  debug_buffer_disk(0,1,0);
+  debug_buffer_disk(0,1,2);
+  debug_buffer_disk(0,0,0);
 
+  // OK, tudo funcionou ate aqui
 
   // mkdir2("/dae");
   // mkdir2("/asd");
-  rmdir2("/sub");
-  debug_buffer_disk(0,1,0);
   // int dae = opendir2("/dae");
   // closedir2(dae);
 // 0 = root
