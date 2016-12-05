@@ -75,6 +75,7 @@ struct open_files_struct {
   int     inode;
   int     record_block;
   int     size;
+  int     offset;
   BYTE    type;
   OPEN_t* nextfile;
 };
@@ -93,6 +94,7 @@ int find_record_in_blockbuffer(REC_t* auxrecord, BYTE type, char* filename);
 int find_free_record_in_blockbuffer(REC_t* auxrecord);
 int get_block_from_inode(INO_t* newinode, int inode);
 int delete_record_from_buffer(char* filename);
+int read_all_records_in_blockbuffer(int block, DIRENT2* dirent);
 
 // for debugging
 void show_open_files_data();
@@ -967,7 +969,24 @@ int readdir2 (DIR2 handle, DIRENT2 *dentry)
     disk_init();
   }
 
+  printf("[readdir2] procurando diretorio de handle: %d\n", handle);
 
+  if(check_open_file(handle) == 0)
+  {
+    printf("[readdir2] nao existe diretorio aberto com handle %d\n", handle);
+    return ERROR;
+  }
+
+  // printf("%d %d %d %x   os: %d\n", current_file->inode, current_file->record_block, current_file->size, current_file->type, current_file->offset);
+
+  INO_t auxinode;
+  int block = get_block_from_inode(&auxinode, handle);
+
+  if (read_all_records_in_blockbuffer(block, dentry) != 0)
+  {
+    printf("[readdir2] fim dos recors validos para este diretorio\n");
+  }
+  current_file->offset++;
 
   return SUCCESS;
 }
@@ -1218,6 +1237,7 @@ int update_open_files(int inode_number, BYTE type)
     open_files.type = type;
     open_files.nextfile = NULL;
     open_files.filesopen++;
+    open_files.offset = 0;
     char *raiz = "raiz";
     if (strncmp(current_dir->name, raiz, 4) == 0)
     {
@@ -1243,6 +1263,7 @@ int update_open_files(int inode_number, BYTE type)
     aux_file->inode = inode_number;
     aux_file->type = type;
     aux_file->nextfile = NULL;
+    aux_file->offset = 0;
 
     char *raiz = "root";
     if (strcmp(current_dir->name, raiz) == 0)
@@ -1813,6 +1834,41 @@ int delete_record_from_buffer(char* filename)
       memcpy((blockbuffer + iterator*64 + 33), &auxrecord.blocksFileSize, sizeof(DWORD));
       memcpy((blockbuffer + iterator*64 + 37), &auxrecord.bytesFileSize, sizeof(DWORD));
       memcpy((blockbuffer + iterator*64 + 41), &auxrecord.inodeNumber, sizeof(int));
+
+      return SUCCESS;
+    }
+    ++iterator;
+  }
+  return ERROR;
+}
+
+int read_all_records_in_blockbuffer(int block, DIRENT2* dirent)
+{
+  REC_t auxrecord;
+  // INO_t newinode;
+  // int block_to_read = get_block_from_inode(&newinode, current_dir->record->inodeNumber);
+  printf("[find_free_record_in_blockbuffer] lendo records no bloco: %d\n", block);
+  read_block(data_area + block*16);
+
+  int iterator = current_file->offset;
+  while (iterator < 64)
+  {
+    auxrecord.TypeVal = *((BYTE *)(blockbuffer + current_file->offset*64));
+    strncpy(auxrecord.name, blockbuffer + current_file->offset*64 + 1, 32);
+    auxrecord.blocksFileSize = *((DWORD *)(blockbuffer + current_file->offset*64 + 33));
+    auxrecord.bytesFileSize = *((DWORD *)(blockbuffer + current_file->offset*64 + 37));
+    auxrecord.inodeNumber = *((int *)(blockbuffer + current_file->offset*64 + 41));
+    if (auxrecord.TypeVal != 0x00)
+    {
+      printf("nome: %s\n", auxrecord.name);
+      printf("tipo: %x                >>|1: arquivo, 2: dir, 3: invalido|\n", auxrecord.TypeVal);
+      printf("blocks file size: %u\n", auxrecord.blocksFileSize);
+      printf("bytes file size: %u\n", auxrecord.bytesFileSize);
+      printf("inode number: %d\n\n", auxrecord.inodeNumber);
+
+      strcpy(dirent->name, auxrecord.name);
+      dirent->fileType = auxrecord.TypeVal;
+      dirent->fileSize = auxrecord.bytesFileSize;
 
       return SUCCESS;
     }

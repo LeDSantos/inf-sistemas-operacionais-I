@@ -39,7 +39,6 @@ int main(int argc, const char * argv[]) {
   debug_buffer_disk(0,1,2);
   debug_buffer_disk(0,0,0);
 
-  // OK, tudo funcionou ate aqui
   arq = open2("arq");
   arq2 = open2("/sub/arq2");
   int size = 64;
@@ -48,6 +47,23 @@ int main(int argc, const char * argv[]) {
   printf("leu %d bytes de %d pedidos: %s\n", leu, size, buffer);
   leu = read2(arq2, buffer, size);
   printf("leu %d bytes de %d pedidos: %s\n", leu, size, buffer);
+
+  DIRENT2 dir;
+  sub = opendir2("/sub");
+  readdir2(sub, &dir);
+  printf("nome lido: %s\n", dir.name);
+  printf("tipo lido: %x\n", dir.fileType);
+  printf("tamanho lido: %d\n", dir.fileSize);
+
+  readdir2(sub, &dir);
+  readdir2(sub, &dir);
+  create2("/sub/file3");
+  create2("/sub/file4");
+  readdir2(sub, &dir);
+  readdir2(sub, &dir);
+  readdir2(sub, &dir);
+
+  // OK, tudo funcionou ate aqui
 
   // rmdir2("/sub");
   // mkdir2("/dae");
