@@ -1,0 +1,67 @@
+  read_sector(inode_area, buffer);
+
+  INO_t inode_aux;
+  inode_aux.dataPtr[0] = *((int *)(buffer + 48));
+  inode_aux.dataPtr[1] = *((int *)(buffer + 52));
+  inode_aux.singleIndPtr = *((int *)(buffer + 56));
+  inode_aux.doubleIndPtr = *((int *)(buffer + 60));
+
+  printf("%d %d %d %d\n", inode_aux.dataPtr[0], inode_aux.dataPtr[1], inode_aux.singleIndPtr, inode_aux. doubleIndPtr);
+
+  read_sector(data_area+12288*0, buffer);
+
+  int iterator = 0;
+  current_record->TypeVal = *((BYTE *)(buffer + iterator*64));
+  strncpy(current_record->name, buffer + iterator*64 + 1, 32);
+  current_record->blocksFileSize = *((DWORD *)(buffer + iterator*64 + 33));
+  current_record->bytesFileSize = *((DWORD *)(buffer + iterator*64 + 37));
+  current_record->inodeNumber = *((int *)(buffer + iterator*64 + 41));
+
+  printf("nome: %s\n", current_record->name);
+  printf("tipo: %x                >>|1: arquivo, 2: dir, 3: invalido|\n", current_record->TypeVal);
+  printf("blocks file size: %u\n", current_record->blocksFileSize);
+  printf("bytes file size: %u\n", current_record->bytesFileSize);
+  printf("inode number: %d\n\n", current_record->inodeNumber);
+
+
+
+  char newnome[] = "opa";
+  DIR_t* newdir = malloc(sizeof(DIR_t));
+  strncpy(newdir->name, newnome, 4);
+  newdir->pai = &root;
+  current_dir->irmao = newdir;
+
+  char newnome2[] = "asd";
+  DIR_t* newdir2 = malloc(sizeof(DIR_t));
+  strncpy(newdir2->name, newnome2, 4);
+  newdir2->pai = newdir;
+  newdir->filho = newdir2;
+
+
+
+  current_dir = root.filho;
+  // printf("%s\n", current_dir->name);
+  char newnome[] = "opa";
+  DIR_t* newdir = malloc(sizeof(DIR_t));
+  strncpy(newdir->name, newnome, 4);
+  newdir->pai = &root;
+  current_dir->irmao = newdir;
+  // printf("%s\n", current_dir->irmao->name);
+
+  char newnome2[] = "asd";
+  DIR_t* newdir2 = malloc(sizeof(DIR_t));
+  strncpy(newdir2->name, newnome2, 4);
+  newdir2->pai = newdir;
+  newdir->filho = newdir2;
+
+
+  printf("[delete_record_from_buffer] %x %s %d %d %d encontrado\n", auxrecord.TypeVal, auxrecord.name, auxrecord.blocksFileSize, auxrecord.bytesFileSize, auxrecord.inodeNumber);
+
+
+
+        printf("%s ***************\n", current_dir->name);
+        printf("%s ***************\n", newdir->name);
+        printf("%s ***************\n", newdir->pai->name);
+        printf("%s ***************\n", newdir->pai->filho->name);
+        printf("%s ***************\n", newdir->pai->filho->irmao->name);
+        printf("%s ***************\n", newdir->record->name);
