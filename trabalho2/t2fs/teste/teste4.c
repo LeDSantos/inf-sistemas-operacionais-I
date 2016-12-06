@@ -7,6 +7,7 @@
 //
 
 #include <stdlib.h>
+#include <string.h>
 #include <stdio.h>
 #include "../include/t2fs.h"
 

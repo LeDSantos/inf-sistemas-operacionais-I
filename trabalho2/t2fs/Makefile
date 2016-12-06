@@ -10,7 +10,7 @@
 # Cristiano Salla Lunardi
 #
 
-LIB=./lib/libcthread.a
+LIB=./lib/libt2fs.a
 INC=./include/
 BIN=./bin/
 SRC=./src/
@@ -21,7 +21,10 @@ DIRS=$(LIB) $(INC) $(BIN) $(SRC) $(TST) $(EXP)
 CC=gcc
 CCFLAGS=-c -lm -m32 -Wall -I$(INC)
 
-all: t1 t2 t3 t4
+all: t1 t2 t3 t4 lib
+
+lib: t2fs.o
+	ar -cru $(LIB) t2fs.o $(BIN)apidisk.o $(BIN)bitmap2.o
 
 t1: t2fs.o teste1.o
 	$(CC) teste1.o t2fs.o $(BIN)apidisk.o $(BIN)bitmap2.o -o teste1
