@@ -21,10 +21,13 @@ DIRS=$(LIB) $(INC) $(BIN) $(SRC) $(TST) $(EXP)
 CC=gcc
 CCFLAGS=-c -lm -m32 -Wall -I$(INC)
 
-all: t1 t2 t3 t4 lib
+all: t1 t2 t3 t4 shell lib
 
 lib: t2fs.o
 	ar -cru $(LIB) t2fs.o $(BIN)apidisk.o $(BIN)bitmap2.o
+
+shell: shell.o
+	$(CC) shell.o t2fs.o $(BIN)apidisk.o $(BIN)bitmap2.o -o shell
 
 t1: t2fs.o teste1.o
 	$(CC) teste1.o t2fs.o $(BIN)apidisk.o $(BIN)bitmap2.o -o teste1
@@ -37,6 +40,9 @@ t3: t2fs.o teste3.o
 
 t4: t2fs.o teste4.o
 	$(CC) teste4.o t2fs.o $(BIN)apidisk.o $(BIN)bitmap2.o -o teste4
+
+shell.o:
+	$(CC) $(CCFLAGS) $(TST)shell.c
 
 teste1.o:
 	$(CC) $(CCFLAGS) $(TST)teste1.c

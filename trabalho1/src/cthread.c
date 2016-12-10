@@ -35,10 +35,8 @@ TCB_t main_thread;
 // estados apto, bloqueado e executando
 FILA2 filaAptos;
 FILA2 filaBloqueados;
-TCB_t *running_thread;
-
-// fila do join
 FILA2 filaJCB;
+TCB_t *running_thread;
 
 /*
 ** verifica se existe thread para dar unjoin
@@ -46,10 +44,12 @@ FILA2 filaJCB;
 void cunjoin_thread(int tid)
 {
   JCB_t *jcb;
+  jcb = 0;
   TCB_t *thread;
+  thread = 0;
 
   FirstFila2(&filaJCB);
-  while(NextFila2(&filaJCB) == 0)
+  do
   {
     if(filaJCB.it == 0)
     {
@@ -61,10 +61,16 @@ void cunjoin_thread(int tid)
     {
       break;
     }
-  }
+    // jcb = 0;
+  } while(NextFila2(&filaJCB) == 0);
+
+  // if (jcb )
+  // {
+  //   return;
+  // }
 
   FirstFila2(&filaBloqueados);
-  while(NextFila2(&filaBloqueados) == 0)
+  do
   {
     if(filaBloqueados.it == 0)
     {
@@ -75,17 +81,16 @@ void cunjoin_thread(int tid)
     if(jcb->thread->tid == thread->tid)
     {
       DeleteAtIteratorFila2(&filaJCB);
-      remove_thread(thread->tid, &filaBloqueados);
+      DeleteAtIteratorFila2(&filaBloqueados);
 
       free(jcb);
 
       thread->state = PROCST_APTO;
-      AppendFila2(&filaAptos, (void *) thread);
-
+      AppendFila2(&filaAptos, (void *)thread);
       break;
     }
 
-  }
+  } while(NextFila2(&filaBloqueados) == 0);
 }
 
 /*
@@ -98,7 +103,7 @@ void *cscheduler()
     printf("#scheduler em ação\n\n\n");
   }
 
-  if(running_thread != NULL)
+  if(running_thread != 0)
   {
     TCB_t *finalize;
     finalize = running_thread;
@@ -108,7 +113,7 @@ void *cscheduler()
     free(finalize->context.uc_stack.ss_sp);
     free(finalize);
 
-    running_thread = NULL;
+    running_thread = 0;
   }
 
   int draw = ticket_gen();
@@ -148,7 +153,7 @@ void *cscheduler()
 
   while(NextFila2(&filaAptos) == 0)
   {
-    if(filaAptos.it == NULL)
+    if(filaAptos.it == 0)
     {
       break;
     }
@@ -241,7 +246,7 @@ void init_cthreads()
 
   // inicialização do scheduler
   getcontext(&scheduler);
-  scheduler.uc_link = &main_thread.context; //scheduler volta para main
+  scheduler.uc_link = 0; //&main_thread.context; //scheduler volta para main
   scheduler.uc_stack.ss_sp = ss_scheduler;
   scheduler.uc_stack.ss_size = SIGSTKSZ;
   makecontext(&scheduler, (void (*)(void))cscheduler, 0);
@@ -266,6 +271,7 @@ int ccreate (void* (*start)(void*), void *arg)
   {
     init_cthreads();
   }
+
   TCB_t *cthread = malloc(sizeof(TCB_t));
   cthread->tid = thread_count; thread_count++;
   cthread->state = PROCST_CRIACAO;
@@ -277,7 +283,7 @@ int ccreate (void* (*start)(void*), void *arg)
   cthread->context.uc_stack.ss_size = SIGSTKSZ;
   //cthread->context.uc_stack.ss_flags = 0;
 
-  makecontext(&(cthread->context), (void (*)(void)) start, 1, &arg);
+  makecontext(&cthread->context, (void (*)(void)) start, 1, arg);
 
   cthread->state = PROCST_APTO;
 
@@ -319,13 +325,14 @@ int cyield(void)
   thread = running_thread;
   thread->state = PROCST_APTO;
 
-  running_thread = NULL;
 
   if(AppendFila2(&filaAptos, (void *) thread) != 0)
   {
+    printf("erro no cyield\n");
     return -1;
   }
 
+  running_thread = 0;
   swapcontext(&thread->context, &scheduler);
   return 0;
 }
@@ -369,23 +376,27 @@ int cjoin(int tid)
 
   JCB_t *jcb = malloc(sizeof(JCB_t));
   jcb->tid = tid;
+  jcb->thread = thread;
 
   if(debug == 1)
   {
     printf("#cjoin: jcb->tid: %d\n", jcb->tid);
   }
 
-  jcb->thread = thread;
+  if(AppendFila2(&filaJCB, (void*) jcb) != 0)
+  {
+    printf("#cjoin: erro ao inserir na fila jcb\n\n");
+  }
 
   thread->state = PROCST_BLOQ;
-  if(AppendFila2(&filaBloqueados, (void*) jcb) != 0)
+  if(AppendFila2(&filaBloqueados, (void*) thread) != 0)
   {
     printf("#cjoin: erro ao inserir na fila bloqueados\n\n");
   }
 
-  running_thread = NULL;
-
+  running_thread = 0;
   swapcontext(&thread->context, &scheduler);
+
   return 0;
 }
 
@@ -408,6 +419,7 @@ int csem_init(csem_t *sem, int count)
     printf("falha ao criar semaforo\n");
     return -1;
   }
+
   if(debug == 1)
   {
     printf("semaforo criado; recursos: %d\n", sem->count);
@@ -427,14 +439,14 @@ int cwait(csem_t *sem)
     init_cthreads();
   }
 
-  if(sem->fila == NULL)
-  {
-    sem->fila = malloc(sizeof(FILA2));
-    if(CreateFila2(sem->fila) != 0 )
-    {
-      printf("falha ao criar semaforo\n");
-    }
-  }
+  // if(sem->fila == NULL)
+  // {
+  //   sem->fila = malloc(sizeof(FILA2));
+  //   if(CreateFila2(sem->fila) != 0 )
+  //   {
+  //     printf("falha ao criar semaforo\n");
+  //   }
+  // }
 
   sem->count--;
 
@@ -452,7 +464,7 @@ int cwait(csem_t *sem)
     AppendFila2(sem->fila, (void *) thread);
     AppendFila2(&filaBloqueados, (void *) thread);
 
-    running_thread = NULL;
+    running_thread = 0;
 
     swapcontext(&thread->context, &scheduler);
     return 0;
@@ -487,35 +499,54 @@ int csignal(csem_t *sem)
     return -1;
   }
 
-  if(FirstFila2(sem->fila) != 0)
-  {
-    if(debug == 1)
-    {
-      printf("semaforo vazio, liberando\n");
-    }
-
-    free(sem->fila);
-    sem->fila = NULL;
-    return 0;
-  }
-
   sem->count++;
 
-  TCB_t *thread;
-  thread = (TCB_t *)GetAtIteratorFila2(sem->fila);
-  thread->state = PROCST_APTO;
-  DeleteAtIteratorFila2(sem->fila);
-
-  if(remove_thread(thread->tid, &filaBloqueados) != 0)
+  if (FirstFila2(sem->fila) != 0)
   {
-    printf("#csignal: falha ao remover thread da fila bloqueados\n");
+    // printf("fila semaforo vazia ou erro\n");
     return -1;
   }
 
-  if(AppendFila2(&filaAptos, (void *) thread) != 0)
+  TCB_t *thread_found;
+  TCB_t *thread_sem;
+  thread_sem = (TCB_t *)GetAtIteratorFila2(sem->fila);
+
+  if(find_thread(thread_sem->tid, &filaBloqueados) == 0)
   {
-    printf("#csignal: falha ao colocar thread da fila aptos\n");
+    thread_found = (TCB_t *)GetAtIteratorFila2(&filaBloqueados);
+
+    if (thread_found->tid == thread_sem->tid)
+    {
+      thread_sem->state = PROCST_APTO;
+      if (DeleteAtIteratorFila2(sem->fila) != 0)
+      {
+        printf("falha ao remover thread do semaforo\n");
+        return -1;
+      }
+      if (DeleteAtIteratorFila2(&filaBloqueados) != 0)
+      {
+        printf("falha ao remover thread do semaforo\n");
+        return -1;
+      }
+      if (AppendFila2(&filaAptos, (void*)thread_sem) != 0)
+      {
+        printf("#csignal: falha ao colocar thread da fila aptos\n");
+        return -1;
+      }
+    }
   }
+
+  // if(FirstFila2(sem->fila) != 0)
+  // {
+  //   if(debug == 1)
+  //   {
+  //     printf("semaforo vazio, liberando\n");
+  //   }
+
+  //   free(sem->fila);
+  //   sem->fila = NULL;
+  //   return 0;
+  // }
 
   if(debug == 1)
   {

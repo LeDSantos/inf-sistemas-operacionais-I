@@ -981,6 +981,17 @@ DIR2 opendir2 (char *pathname)
     return ERROR;
   }
 
+  char raiz[1] = "/";
+  if (strcmp(raiz, pathname) == 0)
+  {
+    current_dir = &root;
+    update_open_from_opendir = 1;
+    if(update_open_files(current_dir->record->inodeNumber, current_dir->record->TypeVal) < 0)
+      return ERROR;
+    update_open_from_opendir = 0;
+    return current_dir->record->inodeNumber;
+  }
+
   DIR_t* backup;
   backup = current_dir;
 
@@ -1050,7 +1061,7 @@ int readdir2 (DIR2 handle, DIRENT2 *dentry)
   {
     printf("[readdir2] fim dos recors validos para este diretorio\n");
     current_file->offset = 0;
-    return SUCCESS;
+    return ERROR;
   }
   current_file->offset++;
 

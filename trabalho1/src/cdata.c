@@ -42,37 +42,25 @@ int find_thread(int tid, PFILA2 fila)
     return -1;
   }
 
-  thread = (TCB_t *)GetAtIteratorFila2(fila);
-  if(thread->tid == tid)
-  {
-    if(debug == 1)
-    {
-      printf("thread encontrada! tid: %d\n\n", tid);
-    }
-
-    return 0;
-  }
-
-  while(NextFila2(fila) == 0)
+  do
   {
     if(fila->it == 0)
     {
       break;
     }
-    else
-    {
-      thread = (TCB_t *)GetAtIteratorFila2(fila);
-      if(thread->tid == tid)
-      {
-        if(debug == 1)
-        {
-          printf("thread encontrada! tid: %d\n\n", tid);
-        }
 
-        return 0;
+    thread = (TCB_t *)GetAtIteratorFila2(fila);
+
+    if(thread->tid == tid)
+    {
+      if(debug == 1)
+      {
+        printf("thread encontrada! tid: %d\n\n", tid);
       }
+
+      return 0;
     }
-  }
+  } while(NextFila2(fila) == 0);
 
   return -1;
 }
@@ -82,15 +70,7 @@ int remove_thread(int tid, PFILA2 fila)
   TCB_t *thread;
   FirstFila2(fila);
 
-  thread = (TCB_t *)GetAtIteratorFila2(fila);
-
-  if(thread->tid == tid)
-  {
-    DeleteAtIteratorFila2(fila);
-    return 0;
-  }
-
-  while(NextFila2(fila) == 0)
+  do
   {
     if(fila->it == 0)
     {
@@ -104,6 +84,6 @@ int remove_thread(int tid, PFILA2 fila)
       DeleteAtIteratorFila2(fila);
       return 0;
     }
-  }
+  } while(NextFila2(fila) == 0);
   return -1;
 }
