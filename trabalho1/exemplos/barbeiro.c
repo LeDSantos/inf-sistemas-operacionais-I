@@ -5,17 +5,17 @@
 //             micro kernel desenvolvido na disciplina INF01142
 //
 // Primitivas testadas: ccreate, cjoin, cyield, cwait e csignal.
-//
+// 
 // Este programa é basedo na solução de Tanenbaum apresentada no livro
 // "Modern Operating System" (Prentice Hall International 2 ed.).
 //
 // Disclamer: este programa foi desenvolvido para auxiliar no desenvolvimento
 //            de testes para o micronúcleo. NÃO HÁ garantias de estar correto.
 
-#include<stdlib.h>
-#include<unistd.h>
-#include<pthread.h>
-#include<errno.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <pthread.h>
+#include <errno.h>
 #include "../include/support.h"
 #include "../include/cthread.h"
 #include <stdio.h>
@@ -32,7 +32,7 @@ int    waiting = 0;
 
 void sleepao() {
      int i = 0;
-
+ 
      i = rand()%5 + 1;
      for (; i<0; i--) cyield();
      return;
@@ -40,7 +40,7 @@ void sleepao() {
 
 void cut_hair(void)
 {
-    cyield(); cyield(); cyield(); cyield();
+    cyield(); cyield(); cyield(); cyield;
     return;
 }
 
@@ -59,7 +59,7 @@ void* barber(void* arg)
 }
 
 void* customer(void* arg)
-{
+{   
    while(time(NULL) < end_time) {
       cwait(&mutex);
       if (waiting < CHAIRS) {
@@ -101,3 +101,7 @@ int main(int argc, char **argv)
 
     exit(0);
 }
+    
+    
+
+

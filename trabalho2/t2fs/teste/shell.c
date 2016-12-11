@@ -10,21 +10,28 @@
 #include <string.h>
 #include "t2fs.h"
 
-void cmdExit(void);
+
 void cmdMan(void);
+
 void cmdWho(void);
-void cmdCp(void);
-void cmdFscp(void);
-void cmdCreate(void);
-void cmdDelete(void);
-void cmdOpen(void);
-void cmdClose(void);
-void cmdRead(void);
+void cmdLs(void);
 void cmdMkdir(void);
 void cmdRmdir(void);
-void cmdLs(void);
+
+void cmdOpen(void);
+void cmdRead(void);
+void cmdClose(void);
+
+void cmdWrite(void);
+void cmdCreate(void);
+void cmdDelete(void);
+void cmdSeek(void);
 void cmdTrunc(void);
 
+void cmdCp(void);
+void cmdFscp(void);
+
+void cmdExit(void);
 
 static void dump(char *buffer, int size) {
     int base, i;
@@ -49,36 +56,103 @@ static void dump(char *buffer, int size) {
     }
 }
 
+#define	CMD_EXIT	0
+#define	CMD_MAN		1
+#define	CMD_WHO		2
+#define	CMD_DIR		3
+#define	CMD_MKDIR	4
+#define	CMD_RMDIR	5
+#define	CMD_OPEN	6
+#define	CMD_READ	7
+#define	CMD_CLOSE	8
+#define	CMD_WRITE	9
+#define	CMD_CREATE	10
+#define	CMD_DELETE	11
+#define	CMD_SEEK	12
+#define	CMD_TRUNCATE	13
+#define	CMD_COPY	14
+#define	CMD_FS_COPY	15
+
+char helpString[][120] = {
+	"            -> finish this shell",
+	"[comando]   -> command help",
+	"            -> shows T2FS authors",
+	"[pahname]   -> list files in [pathname]",
+	"[dirname]   -> create [dirname] in T2FS",
+	"[dirname]   -> deletes [dirname] from T2FS",
+	"[file]      -> open [file] from T2FS",
+	"[hdl] [siz] -> read [siz] bytes from file [hdl]",
+	"[hdl        -> close [hdl]",
+	"[hdl] [str] -> write [str] bytes to file [hdl]",
+	"[file]      -> create new [file] in T2FS",
+	"[file]      -> deletes [file] from T2FS",
+	"[hdl] [pos] -> set CP of [hdl] file on [pos]",
+	"[hdl] [siz] -> truncate file [hdl] to [siz] bytes",
+	"[src] [dst] -> copy files: [src] -> [dst]",
+	"fscp -t      [src] [dst] -> copy HostFS -> T2FS\nfscp -f      [src] [dst] -> copy T2FS   -> HostFS"
+};
+
+
+struct {
+	char name[20];
+	void (*f)(void);
+	int helpId;
+} cmdList[] = {
+	{ "exit", cmdExit, CMD_EXIT }, { "x", cmdExit, CMD_EXIT },
+	{ "man", cmdMan, CMD_MAN },
+	{ "who", cmdWho, CMD_WHO }, { "id", cmdWho, CMD_WHO },
+	{ "dir", cmdLs, CMD_DIR }, { "ls", cmdLs, CMD_DIR },
+	{ "mkdir", cmdMkdir, CMD_MKDIR }, { "md", cmdMkdir, CMD_MKDIR },
+	{ "rmdir", cmdRmdir, CMD_RMDIR }, { "rm", cmdRmdir, CMD_RMDIR },
+
+	{ "open", cmdOpen, CMD_OPEN },
+	{ "read", cmdRead, CMD_READ }, { "rd", cmdRead, CMD_READ },
+	{ "close", cmdClose, CMD_CLOSE }, { "cl", cmdClose, CMD_CLOSE },
+	{ "write", cmdWrite, CMD_WRITE }, { "wr", cmdWrite, CMD_WRITE },
+	{ "create", cmdCreate, CMD_CREATE }, { "cr", cmdCreate, CMD_CREATE },
+	{ "delete", cmdDelete, CMD_DELETE }, { "del", cmdDelete, CMD_DELETE },
+	{ "seek", cmdSeek, CMD_SEEK }, { "sk", cmdSeek, CMD_SEEK },
+	{ "truncate", cmdTrunc, CMD_TRUNCATE }, { "trunc", cmdTrunc, CMD_TRUNCATE }, { "tk", cmdTrunc, CMD_TRUNCATE },
+
+	{ "cp", cmdCp, CMD_COPY },
+	{ "fscp", cmdFscp, CMD_FS_COPY },
+	{ "fim", NULL, -1 }
+};
+
+
+
 int main()
 {
     char cmd[256];
     char *token;
+    int i;
+    int flagAchou, flagEncerrar;
 
-    printf ("Testing for T2FS - v 1.0\n");
+    printf ("Testing for T2FS - v 2016.2.2\n");
+    strcpy(cmd, "man");
+    token = strtok(cmd," \t");
     cmdMan();
 
+    flagEncerrar = 0;
     while (1) {
         printf ("T2FS> ");
         gets(cmd);
         if( (token = strtok(cmd," \t")) != NULL ) {
-            if (strcmp(token,"exit")==0) { cmdExit(); break; }
-            else if (strcmp(token,"man")==0) cmdMan();
-            else if (strcmp(token,"who")==0) cmdWho();
-            else if (strcmp(token,"cp")==0)  cmdCp();
-            else if (strcmp(token,"fscp")==0) cmdFscp();
-            else if (strcmp(token,"create")==0) cmdCreate();
-            else if (strcmp(token,"del")==0) cmdDelete();
-            else if (strcmp(token,"open")==0) cmdOpen();
-            else if (strcmp(token,"close")==0) cmdClose();
-            else if (strcmp(token,"read")==0) cmdRead();
-            else if (strcmp(token,"mkdir")==0 || strcmp(token,"md")==0) cmdMkdir();
-            else if (strcmp(token,"rmdir")==0 || strcmp(token,"rm")==0) cmdRmdir();
-            else if (strcmp(token,"ls")==0 || strcmp(token,"dir")==0) cmdLs();
-	    else if (strcmp(token,"trunc")==0) cmdTrunc();
-            else printf ("???\n");
+		flagAchou = 0;
+		for (i=0; strcmp(cmdList[i].name,"fim")!=0; i++) {
+			if (strcmp(cmdList[i].name, token)==0) {
+				flagAchou = 1;
+				cmdList[i].f();
+				if (cmdList[i].helpId==CMD_EXIT) {
+					flagEncerrar = 1;
+					break;
+				}
+			}
+		}
+		if (!flagAchou) printf ("???\n");
         }
+	if (flagEncerrar) break;
     }
-
     return 0;
 }
 
@@ -93,22 +167,31 @@ void cmdExit(void) {
 Informa os comandos aceitos pelo programa de teste
 */
 void cmdMan(void) {
-    printf ("man                 -> command help\n");
-    printf ("exit                -> finish this shell\n");
-    printf ("who                 -> shows T2FS authors\n");
-    printf ("create  [file]      -> create new [file] in T2FS\n");
-    printf ("del     [file]      -> delete [file] from T2FS\n");
-    printf ("open    [file]      -> open [file] from T2FS\n");
-    printf ("close   [hdl]       -> close [hdl]\n");
-    printf ("read    [hdl] [siz] -> read [siz] bytes from file [hdl]\n");
-    printf ("trunc   [hdl] [siz] -> truncate file [hdl] to [size] bytes\n");
-    printf ("ls      [pathname]  -> list files in [pathname]\n");
-    printf ("md      [pathname]  -> create [pathname] dir in T2FS\n");
-    printf ("rm      [pathname]  -> deletes [pathname] dir in T2FS\n");
-    printf ("cp      [src] [dst] -> copy files: src -> dst\n");
-    printf ("fscp -t [src] [dst] -> copy HostFS -> T2FS\n");
-    printf ("fscp -f [src] [dst] -> copy T2FS   -> HostFS\n");
+	int i;
+	char *token = strtok(NULL," \t");
+
+	if (token==NULL) {
+		for (i=0; strcmp(cmdList[i].name,"fim")!=0; i++) {
+			switch(i%4) {
+				case 0: printf ("%s", cmdList[i].name); break;
+				case 1:
+				case 2: printf (", %s", cmdList[i].name); break;
+				default: printf (", %s\n", cmdList[i].name); break;
+			}
+		}
+		printf ("\n");
+		return;
+	}
+
+	for (i=0; strcmp(cmdList[i].name,"fim")!=0; i++) {
+		if (strcmp(cmdList[i].name,token)==0) {
+			printf ("%-10s %s\n", cmdList[i].name, helpString[cmdList[i].helpId]);
+		}
+	}
+
+
 }
+
 
 /**
 Chama da função identify2 da biblioteca e coloca o string de retorno na tela
@@ -383,6 +466,46 @@ void cmdRead(void) {
     // show bytes read
     dump(buffer, err);
     printf ("%d bytes read from file-handle %d\n", err, handle);
+
+    free(buffer);
+}
+
+void cmdWrite(void) {
+    FILE2 handle;
+    int size;
+    int err;
+
+    // get first parameter => file handle
+    char *token = strtok(NULL," \t");
+    if (token==NULL) {
+        printf ("Missing parameter\n");
+        return;
+    }
+    if (sscanf(token, "%d", &handle)==0) {
+        printf ("Invalid parameter\n");
+        return;
+    }
+
+    // get second parameter => string
+    token = strtok(NULL," \t");
+    if (token==NULL) {
+        printf ("Missing parameter\n");
+        return;
+    }
+    size = strlen(token);
+
+    // get file bytes
+    err = write2(handle, token, size);
+    if (err<0) {
+        printf ("Error: %d\n", err);
+        return;
+    }
+    if (err!=size) {
+        printf ("Erro: escritos %d bytes, mas apenas %d foram efetivos\n", size, err);
+        return;
+    }
+
+    printf ("%d bytes writen to file-handle %d\n", err, handle);
 }
 
 /**
@@ -444,7 +567,7 @@ void cmdLs(void) {
     // Coloca diretorio na tela
     DIRENT2 dentry;
     while ( readdir2(d, &dentry) == 0 ) {
-        printf ("%c %8u %s\n", (dentry.fileType?'d':'-'), dentry.fileSize, dentry.name);
+        printf ("%c %8u %s\n", (dentry.fileType=0x02?'d':'-'), dentry.fileSize, dentry.name);
     }
 
     closedir2(d);
@@ -481,14 +604,14 @@ void cmdTrunc(void) {
         printf ("Invalid parameter\n");
         return;
     }
-    
+
     // posiciona CP na posicao selecionada
     int err = seek2(handle, size);
     if (err<0) {
         printf ("Error seek2: %d\n", err);
         return;
     }
-    
+
     // trunca
     err = truncate2(handle);
     if (err<0) {
@@ -500,4 +623,43 @@ void cmdTrunc(void) {
     printf ("file-handle %d truncated to %d bytes\n", handle, size );
 }
 
+void cmdSeek(void) {
+    FILE2 handle;
+    int size;
 
+    // get first parameter => file handle
+    char *token = strtok(NULL," \t");
+    if (token==NULL) {
+        printf ("Missing parameter\n");
+        return;
+    }
+    if (sscanf(token, "%d", &handle)==0) {
+        printf ("Invalid parameter\n");
+        return;
+    }
+
+    // get second parameter => number of bytes
+    token = strtok(NULL," \t");
+    if (token==NULL) {
+        printf ("Missing parameter\n");
+        return;
+    }
+    if (sscanf(token, "%d", &size)==0) {
+        printf ("Invalid parameter\n");
+        return;
+    }
+
+    // seek
+    int err = seek2(handle, size);
+    if (err<0) {
+        printf ("Error: %d\n", err);
+        return;
+    }
+    if (err==0) {
+        printf ("Empty file\n");
+        return;
+    }
+
+    printf ("Seek completado para a posicao %d\n", size);
+
+}

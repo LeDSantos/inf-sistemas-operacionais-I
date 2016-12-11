@@ -168,7 +168,7 @@ void disk_init()
   superblock->blockSize = *((WORD *)(buffer + 14));
   superblock->diskSize = *((DWORD *)(buffer + 16));
 
-  disk_info();
+  // disk_info();
 
   open_files.filesopen = 0;
   open_files.inode = NULL;
@@ -212,27 +212,33 @@ void disk_init()
   populate_dir_struct_from_block(0);
 
   current_dir = &root;
-  printf("[disk_info] diretorio %s: '/'\n", current_dir->name);
+  // printf("[disk_info] diretorio %s: '/'\n", current_dir->name);
 
   if(root.filho)
   {
     current_dir = root.filho;
-    printf("[disk_info] subdiretorios na raiz:\n");
+    // printf("[disk_info] subdiretorios na raiz:\n");
     do
     {
-      printf("\"/%s\"\n", current_dir->name);
+      // printf("\"/%s\"\n", current_dir->name);
       current_dir = current_dir->irmao;
     } while(current_dir != NULL);
   }
 
-  printf("\n\n[disk_info] >> T2FS inicializado!\n\n");
+  // printf("\n\n[disk_info] >> T2FS inicializado!\n\n");
   disk_initialized = 1;
   current_dir = &root;
 }
 
 int identify2 (char *name, int size)
 {
-  printf("\nGustavo Madeira Santana - 252853\nCristiano Salla Lunardi - 240508\n\n");
+
+  // printf("\nGustavo Madeira Santana - 252853\nCristiano Salla Lunardi - 240508\n\n");
+
+  if(disk_initialized == 0)
+  {
+    disk_init();
+  }
 
   if(size < sizeof(GROUP))
   {
@@ -265,25 +271,25 @@ FILE2 create2 (char *filename)
   }
   if (strlen(filename) > 32)
   {
-    printf("[create2] limite de 32 caracteres para nome de arquivo, tente novamente\n\n\n");
+    // printf("[create2] limite de 32 caracteres para nome de arquivo, tente novamente\n\n\n");
     return ERROR;
   }
 
   int freeinode = searchBitmap2(BITMAP_INODE, 0);
   if (freeinode < 0)
   {
-    printf("[create2]nao existe inode disponivel, apague algum arquivo antes de criar outro\n\n\n");
+    // printf("[create2]nao existe inode disponivel, apague algum arquivo antes de criar outro\n\n\n");
     return ERROR;
   }
 
   int freeblock = searchBitmap2(BITMAP_DADOS, 0);
   if(freeblock < 0)
   {
-    printf("[create2] disco cheio, apague algum arquivo e tenta novamente\n\n\n");
+    // printf("[create2] disco cheio, apague algum arquivo e tenta novamente\n\n\n");
     return ERROR;
   }
 
-  printf("[create2] criando arquivo \"%s\"\n", filename);
+  // printf("[create2] criando arquivo \"%s\"\n", filename);
 
   char *path[25];
   int dirs = path_parser(filename, &path);
@@ -300,38 +306,38 @@ FILE2 create2 (char *filename)
     current_dir = &root;
   }
 
-  printf("[create2] inode livre encontrado: %d\n", freeinode);
-  printf("[create2] bloco livre encontrado: %d\n", freeblock);
+  // printf("[create2] inode livre encontrado: %d\n", freeinode);
+  // printf("[create2] bloco livre encontrado: %d\n", freeblock);
 
   // printf("[create2] diretorio atual: %s\n", current_dir->name);
   if (create_record_write_to_disk(freeblock, freeinode, name, 0x01) != 0)
   {
-    printf("[create2] falha ao criar record, diretorio cheio ou arquivo ja existe\n\n\n");
+    // printf("[create2] falha ao criar record, diretorio cheio ou arquivo ja existe\n\n\n");
 
     return ERROR;
   }
 
   if (create_inode_write_to_disk(freeblock, freeinode) != 0)
   {
-    printf("[create2] falha ao escrever inode no disco\n\n\n");
+    // printf("[create2] falha ao escrever inode no disco\n\n\n");
     return ERROR;
   }
 
 
   if (setBitmap2 (BITMAP_INODE, freeinode, 1) < 0)
   {
-    printf("[create2] falaha o setar bitmap inode\n\n\n");
+    // printf("[create2] falaha o setar bitmap inode\n\n\n");
     return ERROR;
   }
 
   if (setBitmap2 (BITMAP_DADOS, freeblock, 1) < 0)
   {
-    printf("[create2] falha o setar bitmap bloco\n\n\n");
+    // printf("[create2] falha o setar bitmap bloco\n\n\n");
     return ERROR;
   }
 
-  printf("[create2] \"%s\" criado com sucesso\n", filename);
-  printf("\n\n");
+  // printf("[create2] \"%s\" criado com sucesso\n", filename);
+  // printf("\n\n");
   return freeinode;
 }
 /*-----------------------------------------------------------------------------
@@ -351,11 +357,11 @@ int delete2 (char *filename)
   }
   if (filename == NULL || filename[0] == '\0'  || sizeof(filename) <= 0 || strlen(filename) > 32)
   {
-    printf("[delete2] nome invalida\n");
+    // printf("[delete2] nome invalida\n");
     return ERROR;
   }
 
-  printf("[delete2] procurando arquivo: \"%s\"\n", filename);
+  // printf("[delete2] procurando arquivo: \"%s\"\n", filename);
   char *path[25];
   int dirs = path_parser(filename, &path);
   char *name = path[dirs-1];
@@ -376,20 +382,20 @@ int delete2 (char *filename)
   {
     if (check_open_file(global_record.inodeNumber) == -1)
     {
-      printf("[delete2] nao eh possivel deletar um arquivo aberto\n");
+      // printf("[delete2] nao eh possivel deletar um arquivo aberto\n");
       return ERROR;
     }
 
 
     if (delete_record_from_buffer(name) != 0)
     {
-      printf("[delete2] falha ao remover record do buffer\n");
+      // printf("[delete2] falha ao remover record do buffer\n");
       return ERROR;
     }
 
     if (write_block(data_area + current_dir->dir_block*16) != 0)
     {
-      printf("[delete2] falha ao remover no disco\n");
+      // printf("[delete2] falha ao remover no disco\n");
       return ERROR;
     }
 
@@ -422,11 +428,11 @@ int delete2 (char *filename)
           return ERROR;
     }
 
-    printf("[delete2] \"%s\" removido com sucesso\n", filename);
+    // printf("[delete2] \"%s\" removido com sucesso\n", filename);
     return SUCCESS;
   } else
     {
-      printf("[delete2] arquivo nao encontrado\n");
+      // printf("[delete2] arquivo nao encontrado\n");
       return ERROR;
     }
 
@@ -463,27 +469,27 @@ FILE2 open2 (char *filename)
 
   if (open_files.filesopen == MAX_OPENFILES)
   {
-    printf("[open2] numero maximo de arquivos abertos, use close2()\n");
+    // printf("[open2] numero maximo de arquivos abertos, use close2()\n");
     return ERROR;
   }
   current_dir = root.filho;
-  printf("[open2] abrindo arquivo \"%s\"\n\n\n", filename);
+  // printf("[open2] abrindo arquivo \"%s\"\n\n\n", filename);
 
   int handle = path_exists(filename, 0);
 
   if(handle == -1)
   {
-    printf("[open2] %s nao eh um arquivo valido\n\n\n", filename);
+    // printf("[open2] %s nao eh um arquivo valido\n\n\n", filename);
     return ERROR;
   } else if (handle == -2)
     {
-      printf("[open2] \"%s\" eh um diretorio e nao um arquivo\ndigite o caminho de um arquivo e tente novamente\n\n\n", filename);
+      // printf("[open2] \"%s\" eh um diretorio e nao um arquivo\ndigite o caminho de um arquivo e tente novamente\n\n\n", filename);
       return ERROR;
     } else if (handle == -3)
       {
-        printf("[open2] %s nao eh um caminho valido\n\n\n", filename);
+        // printf("[open2] %s nao eh um caminho valido\n\n\n", filename);
       }
-  printf("\n\n");
+  // printf("\n\n");
   return current_record->inodeNumber;
 }
 
@@ -505,31 +511,36 @@ int close2 (FILE2 handle)
 
   if(handle == NULL || handle < 0)
   {
-    printf("[close2] handle nao possui valor positivo: %d; tente novamente\n\n\n", handle);
+    // printf("[close2] handle nao possui valor positivo: %d; tente novamente\n\n\n", handle);
     return ERROR;
   }
 
-  printf("[close2] procurando arquivo com handle: %d\n", handle);
+  // printf("[close2] procurando arquivo com handle: %d\n", handle);
   current_file = &open_files;
   do
   {
+    if (current_file == NULL)
+    {
+      // printf("[close2] nao existe arquivo para ser fechado\n");
+      return ERROR;
+    }
     if (current_file->inode == handle)
     {
       if (current_file->type != 0x01)
       {
-        printf("[close2] handle pertencente a um diretorio, use closedir2()\n\n\n");
+        // printf("[close2] handle pertencente a um diretorio, use closedir2()\n\n\n");
         return ERROR;
       }
       current_file->inode = INVALID_PTR;
       open_files.filesopen--;
-      printf("[close2] arquivo fechado com sucesso\n");
-      printf("[close2] arquivos abertos: %d\n", open_files.filesopen);
+      // printf("[close2] arquivo fechado com sucesso\n");
+      // printf("[close2] arquivos abertos: %d\n", open_files.filesopen);
       return 0;
     }
     current_file = current_file->nextfile;
   } while (current_file != -1);
-  printf("[close2] nao existe arquivo aberto com handle: %d\n", handle);
-  printf("\n\n");
+  // printf("[close2] nao existe arquivo aberto com handle: %d\n", handle);
+  // printf("\n\n");
   return ERROR;
 }
 
@@ -553,37 +564,38 @@ int read2 (FILE2 handle, char *buffer, int size)
     disk_init();
   }
 
-  printf("[read2] procurando arquivo de handle: %d\n", handle);
+  // printf("[read2] procurando arquivo de handle: %d\n", handle);
 
   if(check_open_file(handle) == 0)
   {
-    printf("[read2] nao existe arquivo aberto com handle %d\n\n\n", handle);
+    // printf("[read2] nao existe arquivo aberto com handle %d\n\n\n", handle);
     return ERROR;
   }
 
   int filesize = current_file->size;
 
-  printf("[read2] arquivo encontrado, lendo %d bytes do arquivo\n", filesize);
+  // printf("[read2] arquivo encontrado, lendo %d bytes do arquivo\n", filesize);
 
   int block_to_read = get_block_from_inode(&global_inode, handle);
   if (block_to_read < 0)
   {
-    printf("[read2] arquivo possui bloco invalido\n\n\n");
+    // printf("[read2] arquivo possui bloco invalido\n\n\n");
     return ERROR;
   }
 
   if (read_block(data_area + block_to_read*16))
   {
-    printf("[read2] nao foi possivel ler bloco de dados do arquivo\n\n\n");
+    // printf("[read2] nao foi possivel ler bloco de dados do arquivo\n\n\n");
     return ERROR;
   }
 
   memset(buffer, 0, strlen(buffer)*1);
-  memcpy(buffer, blockbuffer, size*1);
+  memcpy(buffer, (blockbuffer + current_file->offset), size*1);
 
-  printf("\n\n");
-  if (filesize < size)
-    return filesize;
+  // printf("\n\n");
+  int diff = filesize - current_file->offset;
+  if (diff < size)
+    return diff;
   else
     return size;
 }
@@ -608,45 +620,46 @@ int write2 (FILE2 handle, char *buffer, int size)
     disk_init();
   }
 
-  printf("[write2] procurando arquivo de handle: %d\n", handle);
+  // printf("[write2] procurando arquivo de handle: %d\n", handle);
 
   if(check_open_file(handle) == 0)
   {
-    printf("[write2] nao existe arquivo aberto com handle %d\n\n\n", handle);
+    // printf("[write2] nao existe arquivo aberto com handle %d\n\n\n", handle);
     return ERROR;
   }
 
   int filesize = current_file->size;
   int offset = current_file->offset;
 
-  printf("[write2] arquivo encontrado, pointer esta no byte %d do arquivo\n", current_file->offset);
+  // printf("[write2] arquivo encontrado, pointer esta no byte %d do arquivo\n", current_file->offset);
 
   int block_to_read = get_block_from_inode(&global_inode, handle);
   if (block_to_read < 0)
   {
-    printf("[write2] arquivo possui bloco invalido\n\n\n");
+    // printf("[write2] arquivo possui bloco invalido\n\n\n");
     return ERROR;
   }
 
   if (read_block(data_area + block_to_read*16))
   {
-    printf("[write2] nao foi possivel ler bloco de dados do arquivo\n\n\n");
+    // printf("[write2] nao foi possivel ler bloco de dados do arquivo\n\n\n");
     return ERROR;
   }
 
-  strncpy((blockbuffer + current_file->offset), buffer, size);
+  memcpy((blockbuffer + current_file->offset), buffer, size + 1);
   // printf("%s\n", blockbuffer);
   if (current_file->size < current_file->offset || current_file->size < (current_file->offset + size))
   {
-    current_file->size = current_file->offset + strlen(buffer);
-
+    current_file->size = current_file->offset + size;
   }
 
   current_file->offset++;
   write_block(data_area + block_to_read*16);
 
-  printf("[write2] bytes escritos no arquivo com sucesso!\n");
-  printf("\n\n");
+  seek2(handle, size);
+  truncate2(handle);
+  // printf("[write2] bytes escritos no arquivo com sucesso!\n");
+  // printf("\n\n");
   return size;
 }
 
@@ -668,15 +681,15 @@ int truncate2 (FILE2 handle)
     disk_init();
   }
 
-  printf("[truncate2] procurando arquivo de handle: %d\n", handle);
+  // printf("[truncate2] procurando arquivo de handle: %d\n", handle);
 
   if(check_open_file(handle) == 0)
   {
-    printf("[truncate2] nao existe arquivo aberto com handle %d\n", handle);
+    // printf("[truncate2] nao existe arquivo aberto com handle %d\n", handle);
     return ERROR;
   }
   int offset = current_file->offset;
-  printf("[truncate2] pointer esta posicionado em %d bytes, truncando arquivo\n", offset);
+  // printf("[truncate2] pointer esta posicionado em %d bytes, truncando arquivo\n", offset);
 
   INO_t auxinode;
   int block = get_block_from_inode(&auxinode, handle);
@@ -693,8 +706,8 @@ int truncate2 (FILE2 handle)
   if (current_file->size > offset)
     current_file->size = offset;
 
-  printf("[truncate2] arquivo truncado com sucesso!\n");
-  printf("\n\n");
+  // printf("[truncate2] arquivo truncado com sucesso!\n");
+  // printf("\n\n");
   return SUCCESS;
 }
 
@@ -719,11 +732,11 @@ int seek2 (FILE2 handle, DWORD offset)
     disk_init();
   }
 
-  printf("[seek2] procurando arquivo de handle: %d\n", handle);
+  // printf("[seek2] procurando arquivo de handle: %d\n", handle);
 
   if(check_open_file(handle) == 0)
   {
-    printf("[seek2] nao existe arquivo aberto com handle %d\n", handle);
+    // printf("[seek2] nao existe arquivo aberto com handle %d\n", handle);
     return ERROR;
   }
 
@@ -732,8 +745,8 @@ int seek2 (FILE2 handle, DWORD offset)
     current_file->offset = current_file->size;
   } else current_file->offset = offset;
 
-  printf("[seek2] pointer posicionado em %d bytes\n", current_file->offset);
-  printf("\n\n");
+  // printf("[seek2] pointer posicionado em %d bytes\n", current_file->offset);
+  // printf("\n\n");
   return SUCCESS;
 }
 
@@ -785,7 +798,7 @@ int mkdir2 (char *pathname)
     return ERROR;
   }
 
-  printf("[mkdir2] criando diretorio \"%s\"\n", pathname);
+  // printf("[mkdir2] criando diretorio \"%s\"\n", pathname);
 
   char *path[25];
   int dirs = path_parser(pathname, &path);
@@ -802,8 +815,8 @@ int mkdir2 (char *pathname)
     current_dir = &root;
   }
 
-  printf("[mkdir2] inode livre encontrado: %d\n", freeinode);
-  printf("[mkdir2] bloco livre encontrado: %d\n", freeblock);
+  // printf("[mkdir2] inode livre encontrado: %d\n", freeinode);
+  // printf("[mkdir2] bloco livre encontrado: %d\n", freeblock);
 
   // printf("[mkdir2] diretorio atual: %s\n", current_dir->name);
   if (create_record_write_to_disk(freeblock, freeinode, name, 0x02) != 0)
@@ -833,8 +846,8 @@ int mkdir2 (char *pathname)
 
   // int update_directory_struct()
 
-  printf("[mkdir2] \"%s\" criado com sucesso\n", pathname);
-  printf("\n\n");
+  // printf("[mkdir2] \"%s\" criado com sucesso\n", pathname);
+  // printf("\n\n");
   return freeinode;
 }
 
@@ -867,7 +880,7 @@ int rmdir2 (char *pathname)
     return ERROR;
   }
 
-  printf("[rmdir2] buscando diretorio \"%s\" para remover\n", pathname);
+  // printf("[rmdir2] buscando diretorio \"%s\" para remover\n", pathname);
 
   char *path[25];
   int dirs = path_parser(pathname, &path);
@@ -889,19 +902,19 @@ int rmdir2 (char *pathname)
   {
     if (check_open_file(global_record.inodeNumber) == -1)
     {
-      printf("[rmdir2] nao eh possivel deletar um arquivo aberto\n");
+      // printf("[rmdir2] nao eh possivel deletar um arquivo aberto\n");
       return ERROR;
     }
 
     if (delete_record_from_buffer(name) != 0)
     {
-      printf("[rmdir2] falha ao remover record do buffer\n");
+      // printf("[rmdir2] falha ao remover record do buffer\n");
       return ERROR;
     }
 
     if (write_block(data_area + current_dir->dir_block*16) != 0)
     {
-      printf("[rmdir2] falha ao remover no disco\n");
+      // printf("[rmdir2] falha ao remover no disco\n");
       return ERROR;
     }
 
@@ -933,11 +946,11 @@ int rmdir2 (char *pathname)
           return ERROR;
     }
 
-    printf("[rmdir2] \"%s\" removido com sucesso\n", pathname);
+    // printf("[rmdir2] \"%s\" removido com sucesso\n", pathname);
     return SUCCESS;
   } else
     {
-      printf("[rmdir2] arquivo nao encontrado\n");
+      // printf("[rmdir2] arquivo nao encontrado\n");
       return ERROR;
     }
 
@@ -995,7 +1008,7 @@ DIR2 opendir2 (char *pathname)
   DIR_t* backup;
   backup = current_dir;
 
-  printf("[opendir2] abrindo diretorio: \"%s\"\n", pathname);
+  // printf("[opendir2] abrindo diretorio: \"%s\"\n", pathname);
 
   current_dir = root.filho;
 
@@ -1004,7 +1017,7 @@ DIR2 opendir2 (char *pathname)
     return ERROR;
   }
 
-  printf("[opendir2] diretorio atual: %s\n", pathname);
+  // printf("[opendir2] diretorio atual: %s\n", pathname);
 
   if (opendir_from_create == 1)
   {
@@ -1044,11 +1057,11 @@ int readdir2 (DIR2 handle, DIRENT2 *dentry)
     disk_init();
   }
 
-  printf("[readdir2] procurando diretorio de handle: %d\n", handle);
+  // printf("[readdir2] procurando diretorio de handle: %d\n", handle);
 
   if(check_open_file(handle) == 0)
   {
-    printf("[readdir2] nao existe diretorio aberto com handle %d\n", handle);
+    // printf("[readdir2] nao existe diretorio aberto com handle %d\n", handle);
     return ERROR;
   }
 
@@ -1059,14 +1072,14 @@ int readdir2 (DIR2 handle, DIRENT2 *dentry)
 
   if (read_all_records_in_blockbuffer(block, dentry) != 0)
   {
-    printf("[readdir2] fim dos recors validos para este diretorio\n");
+    // printf("[readdir2] fim dos recors validos para este diretorio\n");
     current_file->offset = 0;
     return ERROR;
   }
   current_file->offset++;
 
-  printf("[readdir2] record lido com sucesso");
-  printf("\n\n");
+  // printf("[readdir2] record lido com sucesso");
+  // printf("\n\n");
   return SUCCESS;
 }
 
@@ -1086,13 +1099,13 @@ int closedir2 (DIR2 handle)
     disk_init();
   }
 
-  if(handle == NULL || handle < 0)
+  if(handle < 0)
   {
-    printf("[closedir2] handle nao possui valor positivo: %d; tente novamente\n\n\n", handle);
+    // printf("[closedir2] handle nao possui valor positivo: %d; tente novamente\n\n\n", handle);
     return ERROR;
   }
 
-  printf("[closedir2] procurando diretorio com handle: %d\n", handle);
+  // printf("[closedir2] procurando diretorio com handle: %d\n", handle);
   current_file = &open_files;
   do
   {
@@ -1100,18 +1113,18 @@ int closedir2 (DIR2 handle)
     {
       if (current_file->type != 0x02)
       {
-        printf("[closedir2] handle pertencente a um arquivo, use close2()\n\n\n");
+        // printf("[closedir2] handle pertencente a um arquivo, use close2()\n\n\n");
         return ERROR;
       }
       current_file->inode = INVALID_PTR;
       open_files.filesopen--;
-      printf("[closedir2] diretorio fechado com sucesso\n");
-      printf("[closedir2] arquivos abertos: %d\n\n\n", open_files.filesopen);
+      // printf("[closedir2] diretorio fechado com sucesso\n");
+      // printf("[closedir2] arquivos abertos: %d\n\n\n", open_files.filesopen);
       return 0;
     }
     current_file = current_file->nextfile;
   } while (current_file != -1);
-  printf("[closedir2] nao existe diretorio aberto com handle: %d\n\n\n", handle);
+  // printf("[closedir2] nao existe diretorio aberto com handle: %d\n\n\n", handle);
   return ERROR;
 }
 
@@ -1126,11 +1139,11 @@ int path_exists(char* filename, int type)
   char *path[25];
   int dirs = path_parser(filename, &path);
 
-  printf("[path_exists] possiveis diretorios: %d  ", dirs);
+  // printf("[path_exists] possiveis diretorios: %d  ", dirs);
   int i;
   for (i = 0; i < dirs; ++i)
   {
-    printf(">> %s  ", path[i]);
+    // printf(">> %s  ", path[i]);
   }
 
   i = 0;
@@ -1179,7 +1192,7 @@ int path_exists(char* filename, int type)
 
     } else if (iterator < dirs) // current_dir->filho == NULL &&
       {
-        printf("\n[path_exists] \"%s\" encontrado!\n", searching_for1);
+        // printf("\n[path_exists] \"%s\" encontrado!\n", searching_for1);
         if (!current_dir->filho)
         {
             // printf("[path_exists] e nao tem subdiretorios\n");
@@ -1253,7 +1266,7 @@ int path_parser(char* path, char* pathfound)
 
 int get_file_inode(char *filename)
 {
-  printf("\n[get_file_inode] procurando por \"%s\" como arquivo em %s\n", filename, current_dir->name);
+  // printf("\n[get_file_inode] procurando por \"%s\" como arquivo em %s\n", filename, current_dir->name);
 
 
   int sector_to_read = data_area + current_dir->dir_block*16;
@@ -1285,10 +1298,10 @@ int get_file_inode(char *filename)
   }
   if (current_record == NULL)
   {
-    printf("[get_file_inode] arquivo \"%s\" não existe\n", filename);
+    // printf("[get_file_inode] arquivo \"%s\" não existe\n", filename);
     return ERROR;
   }
-  printf("[get_file_inode] arquivo \"%s\" encontrado!\n", current_record->name);
+  // printf("[get_file_inode] arquivo \"%s\" encontrado!\n", current_record->name);
 
   int handle = update_open_files(current_record->inodeNumber, current_record->TypeVal);
   if(handle < 0)
@@ -1304,7 +1317,7 @@ int update_open_files(int inode_number, BYTE type)
 
   if (iterator == MAX_OPENFILES)
   {
-    printf("[update_open_files] erro: numero maximo de arquivos abertos atingido: %d\n", MAX_OPENFILES);
+    // printf("[update_open_files] erro: numero maximo de arquivos abertos atingido: %d\n", MAX_OPENFILES);
     return -4;
   }
 
@@ -1358,8 +1371,8 @@ int update_open_files(int inode_number, BYTE type)
 
   }
 
-  printf("[update_open_files] arquivo aberto tem handle: %d \n", inode_number);
-  printf("[update_open_files] arquivos abertos: %d\n", open_files.filesopen);
+  // printf("[update_open_files] arquivo aberto tem handle: %d \n", inode_number);
+  // printf("[update_open_files] arquivos abertos: %d\n", open_files.filesopen);
 
   return inode_number;
 }
@@ -1566,7 +1579,7 @@ int create_record_write_to_disk(int freeblock, int freeinode, char* filename, BY
 
   if (read_block(data_area + current_block * 16) != 0)
   {
-    printf("[create_record_write_to_disk] erro ao ler bloco em create_record_write_to_disk\n");
+    // printf("[create_record_write_to_disk] erro ao ler bloco em create_record_write_to_disk\n");
     return ERROR;
   }
 
@@ -1581,7 +1594,7 @@ int create_record_write_to_disk(int freeblock, int freeinode, char* filename, BY
   int offset = find_free_record_in_blockbuffer(auxrecord);
   if (offset == -1)
   {
-    printf("[create_record_write_to_disk] nenhum record livre disponivel no bloco\n");
+    // printf("[create_record_write_to_disk] nenhum record livre disponivel no bloco\n");
     free(auxrecord);
     return ERROR;
   } else if (offset < -1)
@@ -1593,7 +1606,11 @@ int create_record_write_to_disk(int freeblock, int freeinode, char* filename, BY
   auxrecord->TypeVal = type;
   strcpy(auxrecord->name, filename);
   auxrecord->blocksFileSize = 1;
-  auxrecord->bytesFileSize = 0;
+  if (type == 0x02)
+    auxrecord->bytesFileSize = 4096;
+  else
+    auxrecord->bytesFileSize = 0;
+
   auxrecord->inodeNumber = freeinode;
 
   memcpy((blockbuffer + offset), &auxrecord->TypeVal, sizeof(BYTE));
@@ -1696,7 +1713,7 @@ int find_free_record_in_blockbuffer(REC_t* auxrecord)
     auxrecord->inodeNumber = *((int *)(blockbuffer + iterator*64 + 41));
     if (auxrecord->TypeVal == 0x00)
     {
-      printf("[find_free_record_in_blockbuffer] record livre encontrado!\n");
+      // printf("[find_free_record_in_blockbuffer] record livre encontrado!\n");
       return iterator*64;
     }
     ++iterator;
@@ -1729,7 +1746,7 @@ int populate_dir_struct_from_block(int block)
   if (block == 0)
     current_dir = &root;
 
-  printf("[populate_dir_struct_from_block] populando: %s\n", current_dir->name);
+  // printf("[populate_dir_struct_from_block] populando: %s\n", current_dir->name);
   int iterator = 1;
   while (iterator < 64)
   {
@@ -1892,7 +1909,7 @@ int delete_record_from_buffer(char* filename)
     if (auxrecord.TypeVal != 0x00 && (strcmp(filename, auxrecord.name) == 0))
     {
 
-      printf("[delete_record_from_buffer] %s encontrado\n", auxrecord.name);
+      // printf("[delete_record_from_buffer] %s encontrado\n", auxrecord.name);
       auxrecord.TypeVal = 0x00;
       strncpy(auxrecord.name, "\0", 32);
       auxrecord.blocksFileSize = INVALID_PTR;
@@ -1953,7 +1970,7 @@ int update_record_filesize_on_buffer(char* filename)
 
     if (auxrecord.TypeVal != 0x00 && (strcmp(filename, auxrecord.name) == 0))
     {
-      printf("[update_record_filesize_on_buffer] %s sendo atualizado\n", auxrecord.name);
+      // printf("[update_record_filesize_on_buffer] %s sendo atualizado\n", auxrecord.name);
       auxrecord.bytesFileSize = current_file->offset;
       memcpy((blockbuffer + iterator*64 + 37), &auxrecord.bytesFileSize, sizeof(DWORD));
 
