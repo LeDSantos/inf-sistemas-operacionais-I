@@ -780,21 +780,21 @@ int mkdir2 (char *pathname)
 
   if (strlen(pathname) > 32)
   {
-    printf("[mkdir2] limite de 32 caracteres para nome de arquivo, tente novamente\n");
+    // printf("[mkdir2] limite de 32 caracteres para nome de arquivo, tente novamente\n");
     return ERROR;
   }
 
   int freeinode = searchBitmap2(BITMAP_INODE, 0);
   if (freeinode < 0)
   {
-    printf("[mkdir2]nao existe inode disponivel, apague algum arquivo antes de criar outro\n");
+    // printf("[mkdir2]nao existe inode disponivel, apague algum arquivo antes de criar outro\n");
     return ERROR;
   }
 
   int freeblock = searchBitmap2(BITMAP_DADOS, 0);
   if(freeblock < 0)
   {
-    printf("[mkdir2] disco cheio, apague algum arquivo e tenta novamente\n");
+    // printf("[mkdir2] disco cheio, apague algum arquivo e tenta novamente\n");
     return ERROR;
   }
 
@@ -821,26 +821,26 @@ int mkdir2 (char *pathname)
   // printf("[mkdir2] diretorio atual: %s\n", current_dir->name);
   if (create_record_write_to_disk(freeblock, freeinode, name, 0x02) != 0)
   {
-    printf("[mkdir2] falha ao criar record\n");
+    // printf("[mkdir2] falha ao criar record\n");
 
     return ERROR;
   }
 
   if (create_inode_write_to_disk(freeblock, freeinode) != 0)
   {
-    printf("[mkdir2] falha ao escrever inode no disco\n");
+    // printf("[mkdir2] falha ao escrever inode no disco\n");
     return ERROR;
   }
 
   if (setBitmap2 (BITMAP_INODE, freeinode, 1) < 0)
   {
-    printf("[mkdir2] falaha o setar bitmap inode\n");
+    // printf("[mkdir2] falaha o setar bitmap inode\n");
     return ERROR;
   }
 
   if (setBitmap2 (BITMAP_DADOS, freeblock, 1) < 0)
   {
-    printf("[mkdir2] falha o setar bitmap bloco\n");
+    // printf("[mkdir2] falha o setar bitmap bloco\n");
     return ERROR;
   }
 
@@ -876,7 +876,7 @@ int rmdir2 (char *pathname)
   }
   if (pathname == NULL || pathname[0] == '\0'  || sizeof(pathname) <= 0 || strlen(pathname) > 32)
   {
-    printf("[rmdir2] nome invalida\n");
+    // printf("[rmdir2] nome invalida\n");
     return ERROR;
   }
 
